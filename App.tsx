@@ -17,11 +17,19 @@ type Point = {
 
 type Stroke = {
   id: number;
+  color: string;
   points: (Point | null)[];
 };
 
 type Tool = 'draw' | 'erase';
 
+const INK_COLORS = [
+  { name: 'Charcoal', value: '#27312D' },
+  { name: 'Blue', value: '#4577A8' },
+  { name: 'Red', value: '#C45B4D' },
+  { name: 'Green', value: '#548267' },
+  { name: 'Gold', value: '#C18A35' },
+] as const;
 const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
 
@@ -71,6 +79,7 @@ export default function App() {
   const strokesRef = useRef<Stroke[]>([]);
   const nextStrokeId = useRef(0);
   const [tool, setTool] = useState<Tool>('draw');
+  const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
   const lastTouchRef = useRef<Point | null>(null);
 
   const startDrawing = (event: GestureResponderEvent) => {
@@ -79,7 +88,10 @@ export default function App() {
     lastTouchRef.current = point;
 
     if (tool === 'draw') {
-      const nextStrokes = [...strokesRef.current, { id: nextStrokeId.current++, points: [point] }];
+      const nextStrokes = [
+        ...strokesRef.current,
+        { id: nextStrokeId.current++, color: inkColor, points: [point] },
+      ];
       strokesRef.current = nextStrokes;
       setStrokes(nextStrokes);
     } else {
@@ -150,6 +162,31 @@ export default function App() {
             <Text style={styles.subtitle}>Just you, a line, and a blank page.</Text>
           </View>
 
+          <View style={styles.colorPicker}>
+            <Text style={styles.colorLabel}>Ink</Text>
+            <View style={styles.colorOptions}>
+              {INK_COLORS.map((color) => {
+                const selected = inkColor === color.value;
+                return (
+                  <Pressable
+                    key={color.value}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${color.name} ink`}
+                    accessibilityState={{ checked: selected }}
+                    onPress={() => setInkColor(color.value)}
+                    style={({ pressed }) => [
+                      styles.colorOption,
+                      selected && styles.selectedColorOption,
+                      pressed && styles.colorOptionPressed,
+                    ]}
+                  >
+                    <View style={[styles.colorSwatch, { backgroundColor: color.value }]} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <View
             style={styles.canvas}
             onStartShouldSetResponder={() => true}
@@ -168,8 +205,8 @@ export default function App() {
                         key={`${stroke.id}-${segmentIndex}`}
                         cx={segment[0].x}
                         cy={segment[0].y}
-                        r={2}
-                        fill="#27312D"
+                        r={2.5}
+                        fill={stroke.color}
                       />
                     );
                   }
@@ -180,7 +217,7 @@ export default function App() {
                     <Path
                       key={`${stroke.id}-${segmentIndex}`}
                       d={path}
-                      stroke="#27312D"
+                      stroke={stroke.color}
                       strokeWidth={4}
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -291,7 +328,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     marginTop: 30,
-    marginBottom: 22,
+    marginBottom: 12,
   },
   title: {
     color: '#26312B',
@@ -304,6 +341,43 @@ const styles = StyleSheet.create({
     color: '#858B84',
     fontSize: 14,
     marginTop: 6,
+  },
+  colorPicker: {
+    minHeight: 40,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  colorLabel: {
+    color: '#858B84',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  colorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedColorOption: {
+    borderColor: '#B9C6B9',
+  },
+  colorOptionPressed: {
+    opacity: 0.7,
+  },
+  colorSwatch: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   canvas: {
     flex: 1,
