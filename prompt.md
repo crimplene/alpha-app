@@ -38,3 +38,7 @@ The thickness control takes up too much screen space use a different control tha
 
 Hmm would a slider work better for the thickness control. consider accessibilty
 
+----
+
+In the canvas panel add a layer that presents the latin alphabet representation of the character including diacritic marks. Place it as a non editable layer bottom right hand corner
+

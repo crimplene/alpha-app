@@ -115,6 +115,9 @@ export default function App() {
   const lastTouchRef = useRef<Point | null>(null);
   const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
+  const guideTransliteration = SANSKRIT_VOWELS.find(
+    ({ letter }) => letter === guideVowel,
+  )?.name;
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -352,6 +355,20 @@ export default function App() {
                 >
                   {guideVowel}
                 </SvgText>
+                {guideTransliteration && (
+                  <SvgText
+                    x="94%"
+                    y="91%"
+                    fontSize={20}
+                    fontFamily="sans-serif"
+                    fill="#718477"
+                    opacity={0.75}
+                    textAnchor="end"
+                    alignmentBaseline="central"
+                  >
+                    {guideTransliteration}
+                  </SvgText>
+                )}
               </Svg>
             )}
             <Svg style={StyleSheet.absoluteFill}>
