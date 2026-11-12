@@ -8,6 +8,7 @@ import {
   Text,
   View,
   type GestureResponderEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
@@ -61,6 +62,18 @@ const PEN_THICKNESSES = [
 ] as const;
 const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
+const VOWEL_SWIPE_DISTANCE = 72;
+const DRAW_GESTURE_DISTANCE = 6;
+
+const getTouchCenter = (event: GestureResponderEvent): Point | null => {
+  const { touches } = event.nativeEvent;
+  if (touches.length < 2) return null;
+
+  return {
+    x: touches.reduce((total, touch) => total + touch.pageX, 0) / touches.length,
+    y: touches.reduce((total, touch) => total + touch.pageY, 0) / touches.length,
+  };
+};
 
 const interpolatePoints = (start: Point, end: Point, spacing: number): Point[] => {
   const distance = Math.hypot(end.x - start.x, end.y - start.y);
@@ -113,7 +126,12 @@ export default function App() {
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideVowel, setGuideVowel] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
+  const vowelSelectorRef = useRef<ScrollViewInstance | null>(null);
   const lastTouchRef = useRef<Point | null>(null);
+  const gestureStartRef = useRef<Point | null>(null);
+  const gestureModeRef = useRef<
+    'pending' | 'draw' | 'erase' | 'navigate' | 'navigated' | null
+  >(null);
   const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
   const guideTransliteration = SANSKRIT_VOWELS.find(
@@ -123,26 +141,68 @@ export default function App() {
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
     const point = { x: locationX, y: locationY };
+    gestureStartRef.current = point;
     lastTouchRef.current = point;
+    gestureModeRef.current = 'pending';
+  };
 
-    if (tool === 'draw') {
-      const nextStrokes = [
-        ...strokesRef.current,
-        { id: nextStrokeId.current++, color: inkColor, width: penWidth, points: [point] },
-      ];
-      strokesRef.current = nextStrokes;
-      setStrokes(nextStrokes);
-    } else {
-      eraseAlong(point, point);
-    }
+  const startTwoFingerNavigation = (event: GestureResponderEvent) => {
+    const center = getTouchCenter(event);
+    if (!center || guideVowel === null || gestureModeRef.current !== 'pending') return;
+
+    gestureStartRef.current = center;
+    lastTouchRef.current = null;
+    gestureModeRef.current = 'navigate';
+  };
+
+  const beginStroke = (point: Point) => {
+    const nextStrokes = [
+      ...strokesRef.current,
+      { id: nextStrokeId.current++, color: inkColor, width: penWidth, points: [point] },
+    ];
+    strokesRef.current = nextStrokes;
+    setStrokes(nextStrokes);
   };
 
   const continueDrawing = (event: GestureResponderEvent) => {
+    const mode = gestureModeRef.current;
+    const gestureStart = gestureStartRef.current;
+    if (!mode || !gestureStart || mode === 'navigated') return;
+
+    if (mode === 'navigate') {
+      const center = getTouchCenter(event);
+      if (!center) return;
+
+      const deltaX = center.x - gestureStart.x;
+      const deltaY = center.y - gestureStart.y;
+      if (
+        Math.abs(deltaX) >= VOWEL_SWIPE_DISTANCE &&
+        Math.abs(deltaX) > Math.abs(deltaY) * 1.5
+      ) {
+        gestureModeRef.current = 'navigated';
+        changeGuideBySwipe(deltaX < 0 ? 1 : -1);
+      }
+      return;
+    }
+
     const previousPoint = lastTouchRef.current;
     if (!previousPoint) return;
 
     const point = { x: event.nativeEvent.locationX, y: event.nativeEvent.locationY };
-    if (tool === 'erase') {
+    let activeMode = mode;
+
+    if (mode === 'pending') {
+      const deltaX = point.x - gestureStart.x;
+      const deltaY = point.y - gestureStart.y;
+
+      if (Math.hypot(deltaX, deltaY) < DRAW_GESTURE_DISTANCE) return;
+
+      activeMode = tool;
+      gestureModeRef.current = activeMode;
+      if (activeMode === 'draw') beginStroke(gestureStart);
+    }
+
+    if (activeMode === 'erase') {
       eraseAlong(previousPoint, point);
       lastTouchRef.current = point;
       return;
@@ -154,7 +214,13 @@ export default function App() {
 
     const nextStrokes = [
       ...currentStrokes.slice(0, -1),
-      { ...currentStroke, points: [...currentStroke.points, ...interpolatePoints(previousPoint, point, DRAW_POINT_SPACING)] },
+      {
+        ...currentStroke,
+        points: [
+          ...currentStroke.points,
+          ...interpolatePoints(previousPoint, point, DRAW_POINT_SPACING),
+        ],
+      },
     ];
     strokesRef.current = nextStrokes;
     setStrokes(nextStrokes);
@@ -182,7 +248,37 @@ export default function App() {
     setStrokes([]);
   };
 
+  const selectGuideVowel = (letter: string) => {
+    clearCanvas();
+    setGuideVowel(letter);
+    const index = SANSKRIT_VOWELS.findIndex(({ letter: vowel }) => vowel === letter);
+    vowelSelectorRef.current?.scrollTo({
+      x: Math.max(0, index * 54 - 108),
+      animated: true,
+    });
+  };
+
+  const changeGuideBySwipe = (direction: 1 | -1) => {
+    const currentIndex = SANSKRIT_VOWELS.findIndex(({ letter }) => letter === guideVowel);
+    const nextIndex =
+      currentIndex === -1
+        ? direction === 1
+          ? 0
+          : SANSKRIT_VOWELS.length - 1
+        : (currentIndex + direction + SANSKRIT_VOWELS.length) % SANSKRIT_VOWELS.length;
+    selectGuideVowel(SANSKRIT_VOWELS[nextIndex].letter);
+  };
+
   const stopDrawing = () => {
+    if (gestureModeRef.current === 'pending' && gestureStartRef.current) {
+      if (tool === 'draw') {
+        beginStroke(gestureStartRef.current);
+      } else {
+        eraseAlong(gestureStartRef.current, gestureStartRef.current);
+      }
+    }
+    gestureModeRef.current = null;
+    gestureStartRef.current = null;
     lastTouchRef.current = null;
   };
 
@@ -316,6 +412,7 @@ export default function App() {
               )}
             </View>
             <ScrollView
+              ref={vowelSelectorRef}
               horizontal
               showsHorizontalScrollIndicator
               contentContainerStyle={styles.vowelOptions}
@@ -331,8 +428,7 @@ export default function App() {
                     accessibilityLabel={`${name}, ${letter}`}
                     accessibilityState={{ checked: selected }}
                     onPress={() => {
-                      clearCanvas();
-                      setGuideVowel(letter);
+                      selectGuideVowel(letter);
                     }}
                     style={({ pressed }) => [
                       styles.vowelButton,
@@ -360,10 +456,12 @@ export default function App() {
             }
             onStartShouldSetResponder={() => true}
             onResponderGrant={startDrawing}
+            onResponderStart={startTwoFingerNavigation}
             onResponderMove={continueDrawing}
             onResponderRelease={stopDrawing}
             onResponderTerminate={stopDrawing}
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
+            accessibilityHint="Use one finger to draw or erase. With a vowel selected, use two fingers to swipe to another vowel."
           >
             {guideVowel !== null && guideFontSize > 0 && (
               <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -435,7 +533,9 @@ export default function App() {
                   <View style={styles.hintLine} />
                 </View>
                 <Text style={styles.hintText}>
-                  {tool === 'draw' ? 'Drag your finger to draw' : 'Drag over a line to erase'}
+                  {tool === 'draw'
+                    ? 'One finger to draw · two fingers to change vowel'
+                    : 'One finger to erase · two fingers to change vowel'}
                 </Text>
               </View>
             )}

@@ -47,3 +47,9 @@ In the canvas panel add a layer that presents the latin alphabet representation 
 move the ink & pen controls into a collapsible panel
 
 Make the vowel selector a bit larger
+
+---- 
+
+Change the drawing canvas so that a swipe action will move to the next vowel- with the drawing erased but the guide visble. The vowel selector should change at the same time to display the seleceted vowel
+
+The swipe overrides drawing of a horizontal line, please fix (chage to 2 finger swipe)
