@@ -110,6 +110,7 @@ export default function App() {
   const [tool, setTool] = useState<Tool>('draw');
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
   const [penWidth, setPenWidth] = useState<number>(PEN_THICKNESSES[1].width);
+  const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideVowel, setGuideVowel] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
@@ -202,70 +203,96 @@ export default function App() {
             <Text style={styles.subtitle}>Just you, a line, and a blank page.</Text>
           </View>
 
-          <View style={styles.colorPicker}>
-            <Text style={styles.colorLabel}>Ink</Text>
-            <View style={styles.colorOptions}>
-              {INK_COLORS.map((color) => {
-                const selected = inkColor === color.value;
-                return (
-                  <Pressable
-                    key={color.value}
-                    accessibilityRole="radio"
-                    accessibilityLabel={`${color.name} ink`}
-                    accessibilityState={{ checked: selected }}
-                    onPress={() => setInkColor(color.value)}
-                    style={({ pressed }) => [
-                      styles.colorOption,
-                      selected && styles.selectedColorOption,
-                      pressed && styles.colorOptionPressed,
-                    ]}
-                  >
-                    <View style={[styles.colorSwatch, { backgroundColor: color.value }]} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.thicknessPicker}>
-            <Text style={styles.colorLabel}>Pen</Text>
-            <View style={styles.thicknessSliderArea}>
-              <Slider
-                accessibilityRole="adjustable"
-                accessibilityLabel="Pen thickness"
-                accessibilityHint="Swipe up or down to change between Fine, Medium, and Bold."
-                accessibilityValue={{
-                  min: 0,
-                  max: PEN_THICKNESSES.length - 1,
-                  now: selectedThicknessIndex,
-                  text: PEN_THICKNESSES[selectedThicknessIndex].label,
-                }}
-                minimumValue={0}
-                maximumValue={PEN_THICKNESSES.length - 1}
-                step={1}
-                value={selectedThicknessIndex}
-                onValueChange={(value) =>
-                  setPenWidth(PEN_THICKNESSES[Math.round(value)].width)
-                }
-                minimumTrackTintColor="#758B79"
-                maximumTrackTintColor="#D8DDD5"
-                thumbTintColor="#526D5D"
-                style={styles.thicknessSlider}
-              />
-              <View style={styles.thicknessLabels}>
-                {PEN_THICKNESSES.map(({ label, width }, index) => (
-                  <Text
-                    key={label}
-                    style={[
-                      styles.thicknessLabel,
-                      penWidth === width && styles.activeThicknessLabel,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                ))}
+          <View style={styles.drawingControlsPanel}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ink and pen settings"
+              accessibilityHint={showDrawingControls ? 'Collapse drawing settings' : 'Expand drawing settings'}
+              accessibilityState={{ expanded: showDrawingControls }}
+              onPress={() => setShowDrawingControls((expanded) => !expanded)}
+              style={({ pressed }) => [
+                styles.drawingControlsHeader,
+                pressed && styles.colorOptionPressed,
+              ]}
+            >
+              <Text style={styles.drawingControlsTitle}>Ink & pen</Text>
+              <View style={styles.drawingControlsSummary}>
+                <View style={[styles.summarySwatch, { backgroundColor: inkColor }]} />
+                <Text style={styles.summaryText}>
+                  {PEN_THICKNESSES[selectedThicknessIndex].label}
+                </Text>
+                <Text style={styles.disclosureIcon}>{showDrawingControls ? '−' : '+'}</Text>
               </View>
-            </View>
+            </Pressable>
+            {showDrawingControls && (
+              <View style={styles.drawingControlsContent}>
+                <View style={styles.colorPicker}>
+                  <Text style={styles.colorLabel}>Ink</Text>
+                  <View style={styles.colorOptions}>
+                    {INK_COLORS.map((color) => {
+                      const selected = inkColor === color.value;
+                      return (
+                        <Pressable
+                          key={color.value}
+                          accessibilityRole="radio"
+                          accessibilityLabel={`${color.name} ink`}
+                          accessibilityState={{ checked: selected }}
+                          onPress={() => setInkColor(color.value)}
+                          style={({ pressed }) => [
+                            styles.colorOption,
+                            selected && styles.selectedColorOption,
+                            pressed && styles.colorOptionPressed,
+                          ]}
+                        >
+                          <View style={[styles.colorSwatch, { backgroundColor: color.value }]} />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={styles.thicknessPicker}>
+                  <Text style={styles.colorLabel}>Pen</Text>
+                  <View style={styles.thicknessSliderArea}>
+                    <Slider
+                      accessibilityRole="adjustable"
+                      accessibilityLabel="Pen thickness"
+                      accessibilityHint="Swipe up or down to change between Fine, Medium, and Bold."
+                      accessibilityValue={{
+                        min: 0,
+                        max: PEN_THICKNESSES.length - 1,
+                        now: selectedThicknessIndex,
+                        text: PEN_THICKNESSES[selectedThicknessIndex].label,
+                      }}
+                      minimumValue={0}
+                      maximumValue={PEN_THICKNESSES.length - 1}
+                      step={1}
+                      value={selectedThicknessIndex}
+                      onValueChange={(value) =>
+                        setPenWidth(PEN_THICKNESSES[Math.round(value)].width)
+                      }
+                      minimumTrackTintColor="#758B79"
+                      maximumTrackTintColor="#D8DDD5"
+                      thumbTintColor="#526D5D"
+                      style={styles.thicknessSlider}
+                    />
+                    <View style={styles.thicknessLabels}>
+                      {PEN_THICKNESSES.map(({ label, width }) => (
+                        <Text
+                          key={label}
+                          style={[
+                            styles.thicknessLabel,
+                            penWidth === width && styles.activeThicknessLabel,
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
 
           <View style={styles.guideToolbar}>
@@ -554,6 +581,51 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
   },
+  drawingControlsPanel: {
+    marginBottom: 8,
+    borderRadius: 14,
+    backgroundColor: '#ECEDE8',
+    overflow: 'hidden',
+  },
+  drawingControlsHeader: {
+    minHeight: 40,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  drawingControlsTitle: {
+    color: '#53655A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  drawingControlsSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summarySwatch: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  summaryText: {
+    color: '#7E877F',
+    fontSize: 11,
+  },
+  disclosureIcon: {
+    width: 18,
+    color: '#53655A',
+    textAlign: 'right',
+    fontSize: 17,
+    lineHeight: 20,
+  },
+  drawingControlsContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 6,
+  },
   thicknessPicker: {
     minHeight: 48,
     marginBottom: 4,
@@ -629,9 +701,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   vowelButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
+    width: 48,
+    height: 48,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#E9ECE6',
@@ -646,8 +718,8 @@ const styles = StyleSheet.create({
   },
   vowelText: {
     color: '#53655A',
-    fontSize: 21,
-    lineHeight: 29,
+    fontSize: 24,
+    lineHeight: 34,
   },
   selectedVowelText: {
     color: '#394A3F',
