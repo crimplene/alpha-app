@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import Slider from '@react-native-community/slider';
 import { useRef, useState } from 'react';
 import {
   Pressable,
@@ -24,6 +25,7 @@ type CanvasSize = {
 type Stroke = {
   id: number;
   color: string;
+  width: number;
   points: (Point | null)[];
 };
 
@@ -51,6 +53,11 @@ const SANSKRIT_VOWELS = [
   { letter: 'ऐ', name: 'ai' },
   { letter: 'ओ', name: 'o' },
   { letter: 'औ', name: 'au' },
+] as const;
+const PEN_THICKNESSES = [
+  { label: 'Fine', width: 2 },
+  { label: 'Medium', width: 4 },
+  { label: 'Bold', width: 7 },
 ] as const;
 const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
@@ -102,10 +109,12 @@ export default function App() {
   const nextStrokeId = useRef(0);
   const [tool, setTool] = useState<Tool>('draw');
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
+  const [penWidth, setPenWidth] = useState<number>(PEN_THICKNESSES[1].width);
   const [guideVowel, setGuideVowel] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
   const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
+  const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -115,7 +124,7 @@ export default function App() {
     if (tool === 'draw') {
       const nextStrokes = [
         ...strokesRef.current,
-        { id: nextStrokeId.current++, color: inkColor, points: [point] },
+        { id: nextStrokeId.current++, color: inkColor, width: penWidth, points: [point] },
       ];
       strokesRef.current = nextStrokes;
       setStrokes(nextStrokes);
@@ -153,7 +162,10 @@ export default function App() {
       .map((stroke) => ({
         ...stroke,
         points: stroke.points.map((point) =>
-          point && distanceToSegment(point, start, end) <= ERASER_RADIUS ? null : point,
+          point &&
+          distanceToSegment(point, start, end) <= ERASER_RADIUS + stroke.width / 2
+            ? null
+            : point,
         ),
       }))
       .filter((stroke) => stroke.points.some((point) => point !== null));
@@ -209,6 +221,47 @@ export default function App() {
                   </Pressable>
                 );
               })}
+            </View>
+          </View>
+
+          <View style={styles.thicknessPicker}>
+            <Text style={styles.colorLabel}>Pen</Text>
+            <View style={styles.thicknessSliderArea}>
+              <Slider
+                accessibilityRole="adjustable"
+                accessibilityLabel="Pen thickness"
+                accessibilityHint="Swipe up or down to change between Fine, Medium, and Bold."
+                accessibilityValue={{
+                  min: 0,
+                  max: PEN_THICKNESSES.length - 1,
+                  now: selectedThicknessIndex,
+                  text: PEN_THICKNESSES[selectedThicknessIndex].label,
+                }}
+                minimumValue={0}
+                maximumValue={PEN_THICKNESSES.length - 1}
+                step={1}
+                value={selectedThicknessIndex}
+                onValueChange={(value) =>
+                  setPenWidth(PEN_THICKNESSES[Math.round(value)].width)
+                }
+                minimumTrackTintColor="#758B79"
+                maximumTrackTintColor="#D8DDD5"
+                thumbTintColor="#526D5D"
+                style={styles.thicknessSlider}
+              />
+              <View style={styles.thicknessLabels}>
+                {PEN_THICKNESSES.map(({ label, width }, index) => (
+                  <Text
+                    key={label}
+                    style={[
+                      styles.thicknessLabel,
+                      penWidth === width && styles.activeThicknessLabel,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                ))}
+              </View>
             </View>
           </View>
 
@@ -310,7 +363,7 @@ export default function App() {
                         key={`${stroke.id}-${segmentIndex}`}
                         cx={segment[0].x}
                         cy={segment[0].y}
-                        r={2.5}
+                        r={stroke.width / 2}
                         fill={stroke.color}
                       />
                     );
@@ -323,7 +376,7 @@ export default function App() {
                       key={`${stroke.id}-${segmentIndex}`}
                       d={path}
                       stroke={stroke.color}
-                      strokeWidth={4}
+                      strokeWidth={stroke.width}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       fill="none"
@@ -483,6 +536,35 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
+  },
+  thicknessPicker: {
+    minHeight: 48,
+    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  thicknessSliderArea: {
+    flex: 1,
+    maxWidth: 250,
+  },
+  thicknessSlider: {
+    width: '100%',
+    height: 32,
+  },
+  thicknessLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    marginTop: -4,
+  },
+  thicknessLabel: {
+    color: '#929790',
+    fontSize: 10,
+  },
+  activeThicknessLabel: {
+    color: '#394A3F',
+    fontWeight: '600',
   },
   guideToolbar: {
     minHeight: 102,
