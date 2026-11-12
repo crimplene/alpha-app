@@ -1,0 +1,7 @@
+# Prompt
+
+Create a simple react native app that allows me to create a simple line drawing - no complex tools required
+
+The clear button is hidden on android by the bottom controls. move it so it is wholly visible
+
+Add a simple eraser that will selectively remove areas of the drawing
