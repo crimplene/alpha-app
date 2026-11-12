@@ -2,13 +2,13 @@ import { StatusBar } from 'expo-status-bar';
 import Slider from '@react-native-community/slider';
 import { useRef, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
   type GestureResponderEvent,
-  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
@@ -31,6 +31,10 @@ type Stroke = {
 };
 
 type Tool = 'draw' | 'erase';
+type CharacterTemplate = {
+  letter: string;
+  transliteration: string;
+};
 
 const INK_COLORS = [
   { name: 'Charcoal', value: '#27312D' },
@@ -39,22 +43,99 @@ const INK_COLORS = [
   { name: 'Green', value: '#548267' },
   { name: 'Gold', value: '#C18A35' },
 ] as const;
-const SANSKRIT_VOWELS = [
-  { letter: 'अ', name: 'a' },
-  { letter: 'आ', name: 'ā' },
-  { letter: 'इ', name: 'i' },
-  { letter: 'ई', name: 'ī' },
-  { letter: 'उ', name: 'u' },
-  { letter: 'ऊ', name: 'ū' },
-  { letter: 'ऋ', name: 'ṛ' },
-  { letter: 'ॠ', name: 'ṝ' },
-  { letter: 'ऌ', name: 'ḷ' },
-  { letter: 'ॡ', name: 'ḹ' },
-  { letter: 'ए', name: 'e' },
-  { letter: 'ऐ', name: 'ai' },
-  { letter: 'ओ', name: 'o' },
-  { letter: 'औ', name: 'au' },
-] as const;
+const CHARACTER_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
+  {
+    title: 'Vowels',
+    characters: [
+      { letter: 'अ', transliteration: 'a' },
+      { letter: 'आ', transliteration: 'ā' },
+      { letter: 'इ', transliteration: 'i' },
+      { letter: 'ई', transliteration: 'ī' },
+      { letter: 'उ', transliteration: 'u' },
+      { letter: 'ऊ', transliteration: 'ū' },
+      { letter: 'ऋ', transliteration: 'ṛ' },
+      { letter: 'ॠ', transliteration: 'ṝ' },
+      { letter: 'ऌ', transliteration: 'ḷ' },
+      { letter: 'ॡ', transliteration: 'ḹ' },
+      { letter: 'ए', transliteration: 'e' },
+      { letter: 'ऐ', transliteration: 'ai' },
+      { letter: 'ओ', transliteration: 'o' },
+      { letter: 'औ', transliteration: 'au' },
+    ],
+  },
+  {
+    title: 'Velar',
+    characters: [
+      { letter: 'क', transliteration: 'ka' },
+      { letter: 'ख', transliteration: 'kha' },
+      { letter: 'ग', transliteration: 'ga' },
+      { letter: 'घ', transliteration: 'gha' },
+      { letter: 'ङ', transliteration: 'ṅa' },
+    ],
+  },
+  {
+    title: 'Palatal',
+    characters: [
+      { letter: 'च', transliteration: 'ca' },
+      { letter: 'छ', transliteration: 'cha' },
+      { letter: 'ज', transliteration: 'ja' },
+      { letter: 'झ', transliteration: 'jha' },
+      { letter: 'ञ', transliteration: 'ña' },
+    ],
+  },
+  {
+    title: 'Retroflex',
+    characters: [
+      { letter: 'ट', transliteration: 'ṭa' },
+      { letter: 'ठ', transliteration: 'ṭha' },
+      { letter: 'ड', transliteration: 'ḍa' },
+      { letter: 'ढ', transliteration: 'ḍha' },
+      { letter: 'ण', transliteration: 'ṇa' },
+    ],
+  },
+  {
+    title: 'Dental',
+    characters: [
+      { letter: 'त', transliteration: 'ta' },
+      { letter: 'थ', transliteration: 'tha' },
+      { letter: 'द', transliteration: 'da' },
+      { letter: 'ध', transliteration: 'dha' },
+      { letter: 'न', transliteration: 'na' },
+    ],
+  },
+  {
+    title: 'Labial',
+    characters: [
+      { letter: 'प', transliteration: 'pa' },
+      { letter: 'फ', transliteration: 'pha' },
+      { letter: 'ब', transliteration: 'ba' },
+      { letter: 'भ', transliteration: 'bha' },
+      { letter: 'म', transliteration: 'ma' },
+    ],
+  },
+  {
+    title: 'Approximants',
+    characters: [
+      { letter: 'य', transliteration: 'ya' },
+      { letter: 'र', transliteration: 'ra' },
+      { letter: 'ल', transliteration: 'la' },
+      { letter: 'व', transliteration: 'va' },
+    ],
+  },
+  {
+    title: 'Sibilants and other',
+    characters: [
+      { letter: 'श', transliteration: 'śa' },
+      { letter: 'ष', transliteration: 'ṣa' },
+      { letter: 'स', transliteration: 'sa' },
+      { letter: 'ह', transliteration: 'ha' },
+      { letter: 'ळ', transliteration: 'ḷa' },
+    ],
+  },
+];
+const CHARACTERS: CharacterTemplate[] = CHARACTER_GROUPS.flatMap(
+  ({ characters }) => characters,
+);
 const PEN_THICKNESSES = [
   { label: 'Fine', width: 2 },
   { label: 'Medium', width: 4 },
@@ -124,9 +205,9 @@ export default function App() {
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
   const [penWidth, setPenWidth] = useState<number>(PEN_THICKNESSES[1].width);
   const [showDrawingControls, setShowDrawingControls] = useState(false);
-  const [guideVowel, setGuideVowel] = useState<string | null>(null);
+  const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
+  const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
-  const vowelSelectorRef = useRef<ScrollViewInstance | null>(null);
   const lastTouchRef = useRef<Point | null>(null);
   const gestureStartRef = useRef<Point | null>(null);
   const gestureModeRef = useRef<
@@ -134,9 +215,9 @@ export default function App() {
   >(null);
   const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
-  const guideTransliteration = SANSKRIT_VOWELS.find(
-    ({ letter }) => letter === guideVowel,
-  )?.name;
+  const guideTransliteration = CHARACTERS.find(
+    ({ letter }) => letter === guideCharacter,
+  )?.transliteration;
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -148,7 +229,7 @@ export default function App() {
 
   const startTwoFingerNavigation = (event: GestureResponderEvent) => {
     const center = getTouchCenter(event);
-    if (!center || guideVowel === null || gestureModeRef.current !== 'pending') return;
+    if (!center || guideCharacter === null || gestureModeRef.current !== 'pending') return;
 
     gestureStartRef.current = center;
     lastTouchRef.current = null;
@@ -248,25 +329,21 @@ export default function App() {
     setStrokes([]);
   };
 
-  const selectGuideVowel = (letter: string) => {
+  const selectGuideCharacter = (letter: string) => {
     clearCanvas();
-    setGuideVowel(letter);
-    const index = SANSKRIT_VOWELS.findIndex(({ letter: vowel }) => vowel === letter);
-    vowelSelectorRef.current?.scrollTo({
-      x: Math.max(0, index * 54 - 108),
-      animated: true,
-    });
+    setGuideCharacter(letter);
+    setCharacterPickerVisible(false);
   };
 
   const changeGuideBySwipe = (direction: 1 | -1) => {
-    const currentIndex = SANSKRIT_VOWELS.findIndex(({ letter }) => letter === guideVowel);
+    const currentIndex = CHARACTERS.findIndex(({ letter }) => letter === guideCharacter);
     const nextIndex =
       currentIndex === -1
         ? direction === 1
           ? 0
-          : SANSKRIT_VOWELS.length - 1
-        : (currentIndex + direction + SANSKRIT_VOWELS.length) % SANSKRIT_VOWELS.length;
-    selectGuideVowel(SANSKRIT_VOWELS[nextIndex].letter);
+          : CHARACTERS.length - 1
+        : (currentIndex + direction + CHARACTERS.length) % CHARACTERS.length;
+    selectGuideCharacter(CHARACTERS[nextIndex].letter);
   };
 
   const stopDrawing = () => {
@@ -394,57 +471,106 @@ export default function App() {
           <View style={styles.guideToolbar}>
             <View style={styles.guideHeader}>
               <View>
-                <Text style={styles.guideTitle}>Sanskrit vowels</Text>
-                <Text style={styles.guideSubtitle}>Choose a letter to trace</Text>
+                <Text style={styles.guideTitle}>Sanskrit characters</Text>
+                <Text style={styles.guideSubtitle}>
+                  {guideCharacter === null
+                    ? 'Choose a character to trace'
+                    : `Tracing ${guideCharacter}`}
+                </Text>
               </View>
-              {guideVowel !== null && (
+              <View style={styles.guideActions}>
+                {guideCharacter !== null && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Hide character guide"
+                    onPress={() => setGuideCharacter(null)}
+                    style={({ pressed }) => [
+                      styles.hideGuideButton,
+                      pressed && styles.vowelButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.hideGuideText}>Hide</Text>
+                  </Pressable>
+                )}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Hide letter guide"
-                  onPress={() => setGuideVowel(null)}
+                  accessibilityLabel="Choose Sanskrit character template"
+                  accessibilityHint="Opens the character picker grouped by character type."
+                  onPress={() => setCharacterPickerVisible(true)}
+                  style={({ pressed }) => [
+                    styles.chooseCharacterButton,
+                    pressed && styles.vowelButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.chooseCharacterText}>
+                    {guideCharacter ?? 'Choose'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          <Modal
+            animationType="slide"
+            visible={isCharacterPickerVisible}
+            onRequestClose={() => setCharacterPickerVisible(false)}
+          >
+            <SafeAreaView style={styles.characterPickerScreen}>
+              <View style={styles.characterPickerHeader}>
+                <View>
+                  <Text style={styles.characterPickerTitle}>Choose a character</Text>
+                  <Text style={styles.characterPickerSubtitle}>
+                    Select a template to practice
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close character picker"
+                  onPress={() => setCharacterPickerVisible(false)}
                   style={({ pressed }) => [
                     styles.hideGuideButton,
                     pressed && styles.vowelButtonPressed,
                   ]}
                 >
-                  <Text style={styles.hideGuideText}>Hide</Text>
+                  <Text style={styles.hideGuideText}>Close</Text>
                 </Pressable>
-              )}
-            </View>
-            <ScrollView
-              ref={vowelSelectorRef}
-              horizontal
-              showsHorizontalScrollIndicator
-              contentContainerStyle={styles.vowelOptions}
-              accessibilityRole="radiogroup"
-              accessibilityLabel="Sanskrit vowel guides"
-            >
-              {SANSKRIT_VOWELS.map(({ letter, name }) => {
-                const selected = guideVowel === letter;
-                return (
-                  <Pressable
-                    key={letter}
-                    accessibilityRole="radio"
-                    accessibilityLabel={`${name}, ${letter}`}
-                    accessibilityState={{ checked: selected }}
-                    onPress={() => {
-                      selectGuideVowel(letter);
-                    }}
-                    style={({ pressed }) => [
-                      styles.vowelButton,
-                      selected && styles.selectedVowelButton,
-                      pressed && styles.vowelButtonPressed,
-                    ]}
-                  >
-                    <Text style={[styles.vowelText, selected && styles.selectedVowelText]}>
-                      {letter}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Text style={styles.scrollHint}>‹  Swipe left or right for more  ›</Text>
-          </View>
+              </View>
+              <ScrollView
+                contentContainerStyle={styles.characterGroups}
+                accessibilityLabel="Sanskrit character templates"
+              >
+                {CHARACTER_GROUPS.map(({ title, characters }) => (
+                  <View key={title} style={styles.characterGroup}>
+                    <Text style={styles.characterGroupTitle}>{title}</Text>
+                    <View style={styles.characterGrid}>
+                      {characters.map(({ letter, transliteration }) => {
+                        const selected = guideCharacter === letter;
+                        return (
+                          <Pressable
+                            key={letter}
+                            accessibilityRole="radio"
+                            accessibilityLabel={`${transliteration}, ${letter}`}
+                            accessibilityState={{ checked: selected }}
+                            onPress={() => selectGuideCharacter(letter)}
+                            style={({ pressed }) => [
+                              styles.characterOption,
+                              selected && styles.selectedCharacterOption,
+                              pressed && styles.vowelButtonPressed,
+                            ]}
+                          >
+                            <Text style={styles.characterOptionLetter}>{letter}</Text>
+                            <Text style={styles.characterOptionTransliteration}>
+                              {transliteration}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </SafeAreaView>
+          </Modal>
 
           <View
             style={styles.canvas}
@@ -461,9 +587,9 @@ export default function App() {
             onResponderRelease={stopDrawing}
             onResponderTerminate={stopDrawing}
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
-            accessibilityHint="Use one finger to draw or erase. With a vowel selected, use two fingers to swipe to another vowel."
+            accessibilityHint="Use one finger to draw or erase. With a character selected, use two fingers to swipe to another character."
           >
-            {guideVowel !== null && guideFontSize > 0 && (
+            {guideCharacter !== null && guideFontSize > 0 && (
               <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
                 <SvgText
                   x="50%"
@@ -478,7 +604,7 @@ export default function App() {
                   textAnchor="middle"
                   alignmentBaseline="central"
                 >
-                  {guideVowel}
+                  {guideCharacter}
                 </SvgText>
                 {guideTransliteration && (
                   <SvgText
@@ -527,15 +653,15 @@ export default function App() {
                 }),
               )}
             </Svg>
-            {strokes.length === 0 && guideVowel === null && (
+            {strokes.length === 0 && guideCharacter === null && (
               <View pointerEvents="none" style={styles.canvasHint}>
                 <View style={styles.hintIcon}>
                   <View style={styles.hintLine} />
                 </View>
                 <Text style={styles.hintText}>
                   {tool === 'draw'
-                    ? 'One finger to draw · two fingers to change vowel'
-                    : 'One finger to erase · two fingers to change vowel'}
+                    ? 'One finger to draw · two fingers to change character'
+                    : 'One finger to erase · two fingers to change character'}
                 </Text>
               </View>
             )}
@@ -756,12 +882,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   guideToolbar: {
-    minHeight: 102,
+    minHeight: 48,
     marginBottom: 10,
-    justifyContent: 'space-between',
   },
   guideHeader: {
-    minHeight: 38,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -776,6 +901,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 3,
   },
+  guideActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   hideGuideButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -787,43 +917,89 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  vowelOptions: {
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    paddingRight: 4,
-  },
-  scrollHint: {
-    alignSelf: 'center',
-    color: '#929790',
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 0.2,
-  },
-  vowelButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
+  chooseCharacterButton: {
+    minWidth: 54,
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#DDE8DD',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E9ECE6',
   },
-  selectedVowelButton: {
-    backgroundColor: '#DDE8DD',
-    borderWidth: 1,
-    borderColor: '#9EAF9F',
+  chooseCharacterText: {
+    color: '#394A3F',
+    fontSize: 21,
+    fontWeight: '600',
   },
   vowelButtonPressed: {
     opacity: 0.7,
   },
-  vowelText: {
-    color: '#53655A',
-    fontSize: 24,
-    lineHeight: 34,
+  characterPickerScreen: {
+    flex: 1,
+    backgroundColor: '#F4F4F0',
   },
-  selectedVowelText: {
-    color: '#394A3F',
+  characterPickerHeader: {
+    minHeight: 76,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E6DF',
+  },
+  characterPickerTitle: {
+    color: '#26312B',
+    fontSize: 20,
     fontWeight: '600',
+  },
+  characterPickerSubtitle: {
+    color: '#858B84',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  characterGroups: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 28,
+    gap: 20,
+  },
+  characterGroup: {
+    gap: 10,
+  },
+  characterGroupTitle: {
+    color: '#53655A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  characterGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 8,
+  },
+  characterOption: {
+    width: '18%',
+    minHeight: 68,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#FFFEFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E8E2',
+  },
+  selectedCharacterOption: {
+    backgroundColor: '#DDE8DD',
+    borderColor: '#9EAF9F',
+  },
+  characterOptionLetter: {
+    color: '#39443E',
+    fontSize: 24,
+    lineHeight: 32,
+  },
+  characterOptionTransliteration: {
+    color: '#858B84',
+    fontSize: 10,
   },
   canvas: {
     flex: 1,
