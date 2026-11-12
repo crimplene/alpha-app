@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -34,6 +35,22 @@ const INK_COLORS = [
   { name: 'Red', value: '#C45B4D' },
   { name: 'Green', value: '#548267' },
   { name: 'Gold', value: '#C18A35' },
+] as const;
+const SANSKRIT_VOWELS = [
+  { letter: 'अ', name: 'a' },
+  { letter: 'आ', name: 'ā' },
+  { letter: 'इ', name: 'i' },
+  { letter: 'ई', name: 'ī' },
+  { letter: 'उ', name: 'u' },
+  { letter: 'ऊ', name: 'ū' },
+  { letter: 'ऋ', name: 'ṛ' },
+  { letter: 'ॠ', name: 'ṝ' },
+  { letter: 'ऌ', name: 'ḷ' },
+  { letter: 'ॡ', name: 'ḹ' },
+  { letter: 'ए', name: 'e' },
+  { letter: 'ऐ', name: 'ai' },
+  { letter: 'ओ', name: 'o' },
+  { letter: 'औ', name: 'au' },
 ] as const;
 const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
@@ -85,7 +102,7 @@ export default function App() {
   const nextStrokeId = useRef(0);
   const [tool, setTool] = useState<Tool>('draw');
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
-  const [showGuide, setShowGuide] = useState(false);
+  const [guideVowel, setGuideVowel] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
   const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
@@ -196,28 +213,58 @@ export default function App() {
           </View>
 
           <View style={styles.guideToolbar}>
-            <View>
-              <Text style={styles.guideTitle}>Practice Sanskrit</Text>
-              <Text style={styles.guideSubtitle}>Trace the letter अ</Text>
+            <View style={styles.guideHeader}>
+              <View>
+                <Text style={styles.guideTitle}>Sanskrit vowels</Text>
+                <Text style={styles.guideSubtitle}>Choose a letter to trace</Text>
+              </View>
+              {guideVowel !== null && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Hide letter guide"
+                  onPress={() => setGuideVowel(null)}
+                  style={({ pressed }) => [
+                    styles.hideGuideButton,
+                    pressed && styles.vowelButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.hideGuideText}>Hide</Text>
+                </Pressable>
+              )}
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={showGuide ? 'Hide letter guide' : 'Show letter guide'}
-              accessibilityState={{ selected: showGuide }}
-              onPress={() => setShowGuide((visible) => !visible)}
-              style={({ pressed }) => [
-                styles.guideButton,
-                showGuide && styles.guideButtonActive,
-                pressed && styles.guideButtonPressed,
-              ]}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              contentContainerStyle={styles.vowelOptions}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Sanskrit vowel guides"
             >
-              <Text style={[styles.guideButtonLetter, showGuide && styles.guideButtonTextActive]}>
-                अ
-              </Text>
-              <Text style={[styles.guideButtonText, showGuide && styles.guideButtonTextActive]}>
-                {showGuide ? 'Hide guide' : 'Show guide'}
-              </Text>
-            </Pressable>
+              {SANSKRIT_VOWELS.map(({ letter, name }) => {
+                const selected = guideVowel === letter;
+                return (
+                  <Pressable
+                    key={letter}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${name}, ${letter}`}
+                    accessibilityState={{ checked: selected }}
+                    onPress={() => {
+                      clearCanvas();
+                      setGuideVowel(letter);
+                    }}
+                    style={({ pressed }) => [
+                      styles.vowelButton,
+                      selected && styles.selectedVowelButton,
+                      pressed && styles.vowelButtonPressed,
+                    ]}
+                  >
+                    <Text style={[styles.vowelText, selected && styles.selectedVowelText]}>
+                      {letter}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Text style={styles.scrollHint}>‹  Swipe left or right for more  ›</Text>
           </View>
 
           <View
@@ -235,7 +282,7 @@ export default function App() {
             onResponderTerminate={stopDrawing}
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
           >
-            {showGuide && guideFontSize > 0 && (
+            {guideVowel !== null && guideFontSize > 0 && (
               <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
                 <SvgText
                   x="50%"
@@ -250,7 +297,7 @@ export default function App() {
                   textAnchor="middle"
                   alignmentBaseline="central"
                 >
-                  अ
+                  {guideVowel}
                 </SvgText>
               </Svg>
             )}
@@ -285,7 +332,7 @@ export default function App() {
                 }),
               )}
             </Svg>
-            {strokes.length === 0 && !showGuide && (
+            {strokes.length === 0 && guideVowel === null && (
               <View pointerEvents="none" style={styles.canvasHint}>
                 <View style={styles.hintIcon}>
                   <View style={styles.hintLine} />
@@ -438,8 +485,12 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   guideToolbar: {
-    minHeight: 48,
+    minHeight: 102,
     marginBottom: 10,
+    justifyContent: 'space-between',
+  },
+  guideHeader: {
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -454,33 +505,54 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 3,
   },
-  guideButton: {
-    height: 40,
+  hideGuideButton: {
     paddingHorizontal: 12,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#E9ECE6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
-  guideButtonActive: {
-    backgroundColor: '#DDE8DD',
-  },
-  guideButtonPressed: {
-    opacity: 0.7,
-  },
-  guideButtonLetter: {
-    color: '#53655A',
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  guideButtonText: {
+  hideGuideText: {
     color: '#53655A',
     fontSize: 12,
     fontWeight: '600',
   },
-  guideButtonTextActive: {
+  vowelOptions: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingRight: 4,
+  },
+  scrollHint: {
+    alignSelf: 'center',
+    color: '#929790',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.2,
+  },
+  vowelButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E9ECE6',
+  },
+  selectedVowelButton: {
+    backgroundColor: '#DDE8DD',
+    borderWidth: 1,
+    borderColor: '#9EAF9F',
+  },
+  vowelButtonPressed: {
+    opacity: 0.7,
+  },
+  vowelText: {
+    color: '#53655A',
+    fontSize: 21,
+    lineHeight: 29,
+  },
+  selectedVowelText: {
     color: '#394A3F',
+    fontWeight: '600',
   },
   canvas: {
     flex: 1,

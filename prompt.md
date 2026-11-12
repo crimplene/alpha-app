@@ -13,3 +13,9 @@ Add a button or slider. When pressed or selected the button should add the sansk
 Make the guide 20% larger
 
 Make the guide larger and centre on the canvas...I still want whitespace around the edge of the guide but optimize the use of space
+
+Change the sanskrit letter guide button to add all sanskrit vowels as a choice that will present a guide on the canvas. Choose an appropriate control to do this
+
+It's not clear from the selector that you can scroll make it apparent that you can slide left & right.
+
+When a guide is chosen, the canvas should be cleared
