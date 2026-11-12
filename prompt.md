@@ -4,4 +4,4 @@ Create a simple react native app that allows me to create a simple line drawing 
 
 The clear button is hidden on android by the bottom controls. move it so it is wholly visible
 
-Add a simple eraser that will selectively remove areas of the drawing
+Add a simple eraser that will selectively remove areas of the drawing. Control should pass between erase and draw control
