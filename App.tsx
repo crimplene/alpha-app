@@ -8,11 +8,16 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 
 type Point = {
   x: number;
   y: number;
+};
+
+type CanvasSize = {
+  width: number;
+  height: number;
 };
 
 type Stroke = {
@@ -80,7 +85,10 @@ export default function App() {
   const nextStrokeId = useRef(0);
   const [tool, setTool] = useState<Tool>('draw');
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
+  const [showGuide, setShowGuide] = useState(false);
+  const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
+  const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -187,8 +195,39 @@ export default function App() {
             </View>
           </View>
 
+          <View style={styles.guideToolbar}>
+            <View>
+              <Text style={styles.guideTitle}>Practice Sanskrit</Text>
+              <Text style={styles.guideSubtitle}>Trace the letter अ</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showGuide ? 'Hide letter guide' : 'Show letter guide'}
+              accessibilityState={{ selected: showGuide }}
+              onPress={() => setShowGuide((visible) => !visible)}
+              style={({ pressed }) => [
+                styles.guideButton,
+                showGuide && styles.guideButtonActive,
+                pressed && styles.guideButtonPressed,
+              ]}
+            >
+              <Text style={[styles.guideButtonLetter, showGuide && styles.guideButtonTextActive]}>
+                अ
+              </Text>
+              <Text style={[styles.guideButtonText, showGuide && styles.guideButtonTextActive]}>
+                {showGuide ? 'Hide guide' : 'Show guide'}
+              </Text>
+            </Pressable>
+          </View>
+
           <View
             style={styles.canvas}
+            onLayout={({ nativeEvent }) =>
+              setCanvasSize({
+                width: nativeEvent.layout.width,
+                height: nativeEvent.layout.height,
+              })
+            }
             onStartShouldSetResponder={() => true}
             onResponderGrant={startDrawing}
             onResponderMove={continueDrawing}
@@ -196,6 +235,25 @@ export default function App() {
             onResponderTerminate={stopDrawing}
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
           >
+            {showGuide && guideFontSize > 0 && (
+              <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                <SvgText
+                  x="50%"
+                  y="50%"
+                  fontSize={guideFontSize}
+                  fontFamily="sans-serif"
+                  fill="none"
+                  stroke="#718477"
+                  strokeWidth={1.6}
+                  strokeDasharray="8 8"
+                  opacity={0.5}
+                  textAnchor="middle"
+                  alignmentBaseline="central"
+                >
+                  अ
+                </SvgText>
+              </Svg>
+            )}
             <Svg style={StyleSheet.absoluteFill}>
               {strokes.flatMap((stroke) =>
                 splitStroke(stroke).map((segment, segmentIndex) => {
@@ -227,7 +285,7 @@ export default function App() {
                 }),
               )}
             </Svg>
-            {strokes.length === 0 && (
+            {strokes.length === 0 && !showGuide && (
               <View pointerEvents="none" style={styles.canvasHint}>
                 <View style={styles.hintIcon}>
                   <View style={styles.hintLine} />
@@ -378,6 +436,51 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
+  },
+  guideToolbar: {
+    minHeight: 48,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  guideTitle: {
+    color: '#39443E',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  guideSubtitle: {
+    color: '#929790',
+    fontSize: 11,
+    marginTop: 3,
+  },
+  guideButton: {
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#E9ECE6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  guideButtonActive: {
+    backgroundColor: '#DDE8DD',
+  },
+  guideButtonPressed: {
+    opacity: 0.7,
+  },
+  guideButtonLetter: {
+    color: '#53655A',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  guideButtonText: {
+    color: '#53655A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  guideButtonTextActive: {
+    color: '#394A3F',
   },
   canvas: {
     flex: 1,
