@@ -31,7 +31,7 @@ type Stroke = {
 };
 
 type Tool = 'draw' | 'erase';
-type CharacterSource = 'alphabet' | 'matras';
+type CharacterSource = 'alphabet' | 'matras' | 'virama';
 type CharacterTemplate = {
   letter: string;
   transliteration: string;
@@ -154,12 +154,54 @@ const MATRA_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
     ],
   },
 ];
+const VIRAMA_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
+  {
+    title: 'Consonants with Virāma (no vowel)',
+    characters: [
+      { letter: 'क्', transliteration: 'k' },
+      { letter: 'ख्', transliteration: 'kh' },
+      { letter: 'ग्', transliteration: 'g' },
+      { letter: 'घ्', transliteration: 'gh' },
+      { letter: 'ङ्', transliteration: 'ṅ' },
+      { letter: 'च्', transliteration: 'c' },
+      { letter: 'छ्', transliteration: 'ch' },
+      { letter: 'ज्', transliteration: 'j' },
+      { letter: 'झ्', transliteration: 'jh' },
+      { letter: 'ञ्', transliteration: 'ñ' },
+      { letter: 'ट्', transliteration: 'ṭ' },
+      { letter: 'ठ्', transliteration: 'ṭh' },
+      { letter: 'ड्', transliteration: 'ḍ' },
+      { letter: 'ढ्', transliteration: 'ḍh' },
+      { letter: 'ण्', transliteration: 'ṇ' },
+      { letter: 'त्', transliteration: 't' },
+      { letter: 'थ्', transliteration: 'th' },
+      { letter: 'द्', transliteration: 'd' },
+      { letter: 'ध्', transliteration: 'dh' },
+      { letter: 'न्', transliteration: 'n' },
+      { letter: 'प्', transliteration: 'p' },
+      { letter: 'फ्', transliteration: 'ph' },
+      { letter: 'ब्', transliteration: 'b' },
+      { letter: 'भ्', transliteration: 'bh' },
+      { letter: 'म्', transliteration: 'm' },
+      { letter: 'य्', transliteration: 'y' },
+      { letter: 'र्', transliteration: 'r' },
+      { letter: 'ल्', transliteration: 'l' },
+      { letter: 'व्', transliteration: 'v' },
+      { letter: 'श्', transliteration: 'ś' },
+      { letter: 'ष्', transliteration: 'ṣ' },
+      { letter: 'स्', transliteration: 's' },
+      { letter: 'ह्', transliteration: 'h' },
+      { letter: 'ळ्', transliteration: 'ḷ' },
+    ],
+  },
+];
 const CHARACTER_SOURCES: Record<
   CharacterSource,
   { title: string; groups: { title: string; characters: CharacterTemplate[] }[] }
 > = {
   alphabet: { title: 'Alphabet', groups: CHARACTER_GROUPS },
   matras: { title: 'Mātrā', groups: MATRA_GROUPS },
+  virama: { title: 'Virāma', groups: VIRAMA_GROUPS },
 };
 const PEN_THICKNESSES = [
   { label: 'Fine', width: 2 },
@@ -574,7 +616,7 @@ export default function App() {
                 accessibilityRole="radiogroup"
                 accessibilityLabel="Template source"
               >
-                {(['alphabet', 'matras'] as const).map((source) => {
+                {(['alphabet', 'matras', 'virama'] as const).map((source) => {
                   const selected = characterSource === source;
                   return (
                     <Pressable
@@ -607,6 +649,11 @@ export default function App() {
               {characterSource === 'matras' && (
                 <Text style={styles.matraNote}>
                   The inherent vowel अ has no separate Mātrā sign.
+                </Text>
+              )}
+              {characterSource === 'virama' && (
+                <Text style={styles.matraNote}>
+                  Virāma (्) removes the inherent vowel from each consonant.
                 </Text>
               )}
               <ScrollView

@@ -94,3 +94,9 @@ Devanagri rules for writing consonant and a vowel are called Mātrā. Implement 
 
 ---
 Some of the templated Mātrā values do not fit into the canvas please fix
+
+---
+
+Add another list of consonants that implement the Virāma rule - no added vowel
+
+I don't want it added to the alphabet list - i want it as a specific set of character grouping like the Mātrā set
