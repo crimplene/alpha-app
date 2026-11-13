@@ -181,3 +181,11 @@ Add the icon to the screen
 
 --
 Make the background of the screen match the background of the icon. 
+
+---
+
+Remove the hide button
+
+---
+
+Make the english lettering on the canvas bolder

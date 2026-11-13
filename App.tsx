@@ -648,19 +648,6 @@ export default function App() {
                 </Text>
               </View>
               <View style={styles.guideActions}>
-                {guideCharacter !== null && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Hide character guide"
-                    onPress={() => setGuideCharacter(null)}
-                    style={({ pressed }) => [
-                      styles.hideGuideButton,
-                      pressed && styles.vowelButtonPressed,
-                    ]}
-                  >
-                    <Text style={styles.hideGuideText}>Hide</Text>
-                  </Pressable>
-                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Choose Sanskrit character template"
@@ -900,8 +887,9 @@ export default function App() {
                     y="91%"
                     fontSize={20}
                     fontFamily="sans-serif"
+                    fontWeight="700"
                     fill="#718477"
-                    opacity={0.75}
+                    opacity={0.9}
                     textAnchor="end"
                     alignmentBaseline="central"
                   >
