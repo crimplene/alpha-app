@@ -100,3 +100,73 @@ Some of the templated Mātrā values do not fit into the canvas please fix
 Add another list of consonants that implement the Virāma rule - no added vowel
 
 I don't want it added to the alphabet list - i want it as a specific set of character grouping like the Mātrā set
+
+----
+
+Implement the most common Saṃyuktākṣara conjuncts - use this list to spearate them into separate groups 1. Important and common conjuncts
+#	Conjunct	Components	IAST
+1	क्ष	क् + ष	kṣa
+2	त्र	त् + र	tra
+3	ज्ञ	ज् + ञ	jña
+4	श्र	श् + र	śra
+5	क्त	क् + त	kta
+6	त्त	त् + त	tta
+7	द्ध	द् + ध	ddha
+8	द्य	द् + य	dya
+9	द्व	द् + व	dva
+10	त्व	त् + व	tva
+
+2. Conjuncts involving र (ra)
+#	Conjunct	Components	IAST
+11	क्र	क् + र	kra
+12	ग्र	ग् + र	gra
+13	प्र	प् + र	pra
+14	ब्र	ब् + र	bra
+15	द्र	द् + र	dra
+16	भ्र	भ् + र	bhra
+17	फ्र	फ् + र	phra
+18	व्र	व् + र	vra
+19	र्क	र् + क	rka
+20	र्म	र् + म	rma
+
+3. Nasal consonant combinations
+#	Conjunct	Components	IAST
+21	न्त	न् + त	nta
+22	न्द	न् + द	nda
+23	न्ध	न् + ध	ndha
+24	न्न	न् + न	nna
+25	म्प	म् + प	mpa
+26	म्ब	म् + ब	mba
+27	म्भ	म् + भ	mbha
+28	ङ्क	ङ् + क	ṅka
+29	ङ्ग	ङ् + ग	ṅga
+30	ञ्च	ञ् + च	ñca
+
+4. Conjuncts involving स, श and ष
+#	Conjunct	Components	IAST
+31	स्त	स् + त	sta
+32	स्थ	स् + थ	stha
+33	स्न	स् + न	sna
+34	स्म	स् + म	sma
+35	स्व	स् + व	sva
+36	स्क	स् + क	ska
+37	श्च	श् + च	śca
+38	श्न	श् + न	śna
+39	ष्ट	ष् + ट	ṣṭa
+40	ष्ठ	ष् + ठ	ṣṭha
+
+5. Other useful conjuncts
+#	Conjunct	Components	IAST
+41	च्च	च् + च	cca
+42	च्छ	च् + छ	ccha
+43	ज्ज	ज् + ज	jja
+44	त्न	त् + न	tna
+45	त्म	त् + म	tma
+46	त्य	त् + य	tya
+47	न्य	न् + य	nya
+48	प्य	प् + य	pya
+49	ल्ल	ल् + ल	lla
+50	स्त्र	स् + त् + र	stra 
+
+---
+For the grouped Items I now have to select twice to get the items to dsiplay on the canvas- feels a bit from a usability perspective. Selecting a list or lesson should feault the canvas to that list

@@ -31,10 +31,11 @@ type Stroke = {
 };
 
 type Tool = 'draw' | 'erase';
-type CharacterSource = 'alphabet' | 'matras' | 'virama';
+type CharacterSource = 'alphabet' | 'matras' | 'virama' | 'samyuktakshara';
 type CharacterTemplate = {
   letter: string;
   transliteration: string;
+  components?: string;
 };
 
 const INK_COLORS = [
@@ -195,6 +196,86 @@ const VIRAMA_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
     ],
   },
 ];
+const SAMYUKTAKSHARA_GROUPS: {
+  title: string;
+  characters: CharacterTemplate[];
+}[] = [
+  {
+    title: 'Important and common conjuncts',
+    characters: [
+      { letter: 'क्ष', transliteration: 'kṣa', components: 'क् + ष' },
+      { letter: 'त्र', transliteration: 'tra', components: 'त् + र' },
+      { letter: 'ज्ञ', transliteration: 'jña', components: 'ज् + ञ' },
+      { letter: 'श्र', transliteration: 'śra', components: 'श् + र' },
+      { letter: 'क्त', transliteration: 'kta', components: 'क् + त' },
+      { letter: 'त्त', transliteration: 'tta', components: 'त् + त' },
+      { letter: 'द्ध', transliteration: 'ddha', components: 'द् + ध' },
+      { letter: 'द्य', transliteration: 'dya', components: 'द् + य' },
+      { letter: 'द्व', transliteration: 'dva', components: 'द् + व' },
+      { letter: 'त्व', transliteration: 'tva', components: 'त् + व' },
+    ],
+  },
+  {
+    title: 'Conjuncts involving र (ra)',
+    characters: [
+      { letter: 'क्र', transliteration: 'kra', components: 'क् + र' },
+      { letter: 'ग्र', transliteration: 'gra', components: 'ग् + र' },
+      { letter: 'प्र', transliteration: 'pra', components: 'प् + र' },
+      { letter: 'ब्र', transliteration: 'bra', components: 'ब् + र' },
+      { letter: 'द्र', transliteration: 'dra', components: 'द् + र' },
+      { letter: 'भ्र', transliteration: 'bhra', components: 'भ् + र' },
+      { letter: 'फ्र', transliteration: 'phra', components: 'फ् + र' },
+      { letter: 'व्र', transliteration: 'vra', components: 'व् + र' },
+      { letter: 'र्क', transliteration: 'rka', components: 'र् + क' },
+      { letter: 'र्म', transliteration: 'rma', components: 'र् + म' },
+    ],
+  },
+  {
+    title: 'Nasal consonant combinations',
+    characters: [
+      { letter: 'न्त', transliteration: 'nta', components: 'न् + त' },
+      { letter: 'न्द', transliteration: 'nda', components: 'न् + द' },
+      { letter: 'न्ध', transliteration: 'ndha', components: 'न् + ध' },
+      { letter: 'न्न', transliteration: 'nna', components: 'न् + न' },
+      { letter: 'म्प', transliteration: 'mpa', components: 'म् + प' },
+      { letter: 'म्ब', transliteration: 'mba', components: 'म् + ब' },
+      { letter: 'म्भ', transliteration: 'mbha', components: 'म् + भ' },
+      { letter: 'ङ्क', transliteration: 'ṅka', components: 'ङ् + क' },
+      { letter: 'ङ्ग', transliteration: 'ṅga', components: 'ङ् + ग' },
+      { letter: 'ञ्च', transliteration: 'ñca', components: 'ञ् + च' },
+    ],
+  },
+  {
+    title: 'Conjuncts involving स, श and ष',
+    characters: [
+      { letter: 'स्त', transliteration: 'sta', components: 'स् + त' },
+      { letter: 'स्थ', transliteration: 'stha', components: 'स् + थ' },
+      { letter: 'स्न', transliteration: 'sna', components: 'स् + न' },
+      { letter: 'स्म', transliteration: 'sma', components: 'स् + म' },
+      { letter: 'स्व', transliteration: 'sva', components: 'स् + व' },
+      { letter: 'स्क', transliteration: 'ska', components: 'स् + क' },
+      { letter: 'श्च', transliteration: 'śca', components: 'श् + च' },
+      { letter: 'श्न', transliteration: 'śna', components: 'श् + न' },
+      { letter: 'ष्ट', transliteration: 'ṣṭa', components: 'ष् + ट' },
+      { letter: 'ष्ठ', transliteration: 'ṣṭha', components: 'ष् + ठ' },
+    ],
+  },
+  {
+    title: 'Other useful conjuncts',
+    characters: [
+      { letter: 'च्च', transliteration: 'cca', components: 'च् + च' },
+      { letter: 'च्छ', transliteration: 'ccha', components: 'च् + छ' },
+      { letter: 'ज्ज', transliteration: 'jja', components: 'ज् + ज' },
+      { letter: 'त्न', transliteration: 'tna', components: 'त् + न' },
+      { letter: 'त्म', transliteration: 'tma', components: 'त् + म' },
+      { letter: 'त्य', transliteration: 'tya', components: 'त् + य' },
+      { letter: 'न्य', transliteration: 'nya', components: 'न् + य' },
+      { letter: 'प्य', transliteration: 'pya', components: 'प् + य' },
+      { letter: 'ल्ल', transliteration: 'lla', components: 'ल् + ल' },
+      { letter: 'स्त्र', transliteration: 'stra', components: 'स् + त् + र' },
+    ],
+  },
+];
 const CHARACTER_SOURCES: Record<
   CharacterSource,
   { title: string; groups: { title: string; characters: CharacterTemplate[] }[] }
@@ -202,6 +283,10 @@ const CHARACTER_SOURCES: Record<
   alphabet: { title: 'Alphabet', groups: CHARACTER_GROUPS },
   matras: { title: 'Mātrā', groups: MATRA_GROUPS },
   virama: { title: 'Virāma', groups: VIRAMA_GROUPS },
+  samyuktakshara: {
+    title: 'Saṃyuktākṣara',
+    groups: SAMYUKTAKSHARA_GROUPS,
+  },
 };
 const PEN_THICKNESSES = [
   { label: 'Fine', width: 2 },
@@ -274,6 +359,7 @@ export default function App() {
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
   const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
+  const [selectedConjunctLesson, setSelectedConjunctLesson] = useState(0);
   const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
@@ -281,13 +367,17 @@ export default function App() {
   const gestureModeRef = useRef<
     'pending' | 'draw' | 'erase' | 'navigate' | 'navigated' | null
   >(null);
-  const isMatraGuide = characterSource === 'matras';
+  const isComplexGuide =
+    characterSource === 'matras' || characterSource === 'samyuktakshara';
   const guideFontSize = Math.min(
-    canvasSize.width * (isMatraGuide ? 0.68 : 1.22),
-    canvasSize.height * (isMatraGuide ? 0.7 : 0.76),
+    canvasSize.width * (isComplexGuide ? 0.62 : 1.22),
+    canvasSize.height * (isComplexGuide ? 0.68 : 0.76),
   );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
-  const activeCharacterGroups = CHARACTER_SOURCES[characterSource].groups;
+  const activeCharacterGroups =
+    characterSource === 'samyuktakshara'
+      ? [SAMYUKTAKSHARA_GROUPS[selectedConjunctLesson]]
+      : CHARACTER_SOURCES[characterSource].groups;
   const activeCharacters = activeCharacterGroups.flatMap(({ characters }) => characters);
   const guideTransliteration = activeCharacters.find(
     ({ letter }) => letter === guideCharacter,
@@ -596,7 +686,11 @@ export default function App() {
                   <Text style={styles.characterPickerSubtitle}>
                     {characterSource === 'alphabet'
                       ? 'Choose an alphabet character to trace'
-                      : 'Choose a vowel sign attached to क'}
+                      : characterSource === 'matras'
+                        ? 'Choose a vowel sign attached to क'
+                        : characterSource === 'virama'
+                          ? 'Choose a consonant without its inherent vowel'
+                          : 'Choose a conjunct to trace'}
                   </Text>
                 </View>
                 <Pressable
@@ -616,7 +710,7 @@ export default function App() {
                 accessibilityRole="radiogroup"
                 accessibilityLabel="Template source"
               >
-                {(['alphabet', 'matras', 'virama'] as const).map((source) => {
+                {(['alphabet', 'matras', 'virama', 'samyuktakshara'] as const).map((source) => {
                   const selected = characterSource === source;
                   return (
                     <Pressable
@@ -626,7 +720,13 @@ export default function App() {
                       accessibilityState={{ checked: selected }}
                       onPress={() => {
                         setCharacterSource(source);
-                        setGuideCharacter(null);
+                        const firstCharacter =
+                          source === 'samyuktakshara'
+                            ? SAMYUKTAKSHARA_GROUPS[0].characters[0]
+                            : CHARACTER_SOURCES[source].groups[0].characters[0];
+                        setGuideCharacter(firstCharacter.letter);
+                        if (source === 'samyuktakshara') setSelectedConjunctLesson(0);
+                        clearCanvas();
                       }}
                       style={({ pressed }) => [
                         styles.characterSourceButton,
@@ -656,25 +756,82 @@ export default function App() {
                   Virāma (्) removes the inherent vowel from each consonant.
                 </Text>
               )}
+              {characterSource === 'samyuktakshara' && (
+                <Text style={styles.matraNote}>
+                  Each tile shows the conjunct, its components, and IAST transliteration.
+                </Text>
+              )}
               <ScrollView
                 contentContainerStyle={styles.characterGroups}
                 accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} templates`}
               >
+                {characterSource === 'samyuktakshara' && (
+                  <View
+                    style={styles.lessonSection}
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Saṃyuktākṣara lessons"
+                  >
+                    <Text style={styles.characterGroupTitle}>Choose a lesson</Text>
+                    <View style={styles.lessonGrid}>
+                      {SAMYUKTAKSHARA_GROUPS.map((group, index) => {
+                        const selected = selectedConjunctLesson === index;
+                        return (
+                          <Pressable
+                            key={group.title}
+                            accessibilityRole="radio"
+                            accessibilityLabel={`Lesson ${index + 1}: ${group.title}`}
+                            accessibilityState={{ checked: selected }}
+                            onPress={() => {
+                              setSelectedConjunctLesson(index);
+                              setGuideCharacter(group.characters[0].letter);
+                              clearCanvas();
+                            }}
+                            style={({ pressed }) => [
+                              styles.lessonOption,
+                              selected && styles.selectedLessonOption,
+                              pressed && styles.vowelButtonPressed,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.lessonNumber,
+                                selected && styles.selectedLessonText,
+                              ]}
+                            >
+                              LESSON {index + 1}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.lessonTitle,
+                                selected && styles.selectedLessonText,
+                              ]}
+                              numberOfLines={2}
+                            >
+                              {group.title}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
                 {activeCharacterGroups.map(({ title, characters }) => (
                   <View key={title} style={styles.characterGroup}>
                     <Text style={styles.characterGroupTitle}>{title}</Text>
                     <View style={styles.characterGrid}>
-                      {characters.map(({ letter, transliteration }) => {
+                      {characters.map(({ letter, transliteration, components }) => {
                         const selected = guideCharacter === letter;
                         return (
                           <Pressable
                             key={letter}
                             accessibilityRole="radio"
-                            accessibilityLabel={`${transliteration}, ${letter}`}
+                            accessibilityLabel={`${transliteration}, ${letter}${components ? `, components ${components}` : ''}`}
                             accessibilityState={{ checked: selected }}
                             onPress={() => selectGuideCharacter(letter)}
                             style={({ pressed }) => [
                               styles.characterOption,
+                              characterSource === 'samyuktakshara' &&
+                                styles.conjunctCharacterOption,
                               selected && styles.selectedCharacterOption,
                               pressed && styles.vowelButtonPressed,
                             ]}
@@ -683,6 +840,11 @@ export default function App() {
                             <Text style={styles.characterOptionTransliteration}>
                               {transliteration}
                             </Text>
+                            {components && (
+                              <Text style={styles.characterOptionComponents}>
+                                {components}
+                              </Text>
+                            )}
                           </Pressable>
                         );
                       })}
@@ -1084,11 +1246,13 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 14,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     backgroundColor: '#E9ECE6',
     gap: 4,
   },
   characterSourceButton: {
-    flex: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
     minHeight: 40,
     borderRadius: 11,
     alignItems: 'center',
@@ -1117,6 +1281,45 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 20,
   },
+  lessonSection: {
+    gap: 10,
+  },
+  lessonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 8,
+  },
+  lessonOption: {
+    width: '48.5%',
+    minHeight: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 13,
+    backgroundColor: '#FFFEFC',
+    borderWidth: 1,
+    borderColor: '#E8E8E2',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  selectedLessonOption: {
+    backgroundColor: '#DDE8DD',
+    borderColor: '#9EAF9F',
+  },
+  lessonNumber: {
+    color: '#929790',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+  },
+  lessonTitle: {
+    color: '#53655A',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  selectedLessonText: {
+    color: '#394A3F',
+  },
   characterGroup: {
     gap: 10,
   },
@@ -1142,6 +1345,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E8E2',
   },
+  conjunctCharacterOption: {
+    width: '31%',
+    minHeight: 82,
+  },
   selectedCharacterOption: {
     backgroundColor: '#DDE8DD',
     borderColor: '#9EAF9F',
@@ -1154,6 +1361,11 @@ const styles = StyleSheet.create({
   characterOptionTransliteration: {
     color: '#858B84',
     fontSize: 10,
+  },
+  characterOptionComponents: {
+    color: '#929790',
+    fontSize: 9,
+    marginTop: 2,
   },
   canvas: {
     flex: 1,
