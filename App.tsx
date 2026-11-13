@@ -31,6 +31,7 @@ type Stroke = {
 };
 
 type Tool = 'draw' | 'erase';
+type CharacterSource = 'alphabet' | 'matras';
 type CharacterTemplate = {
   letter: string;
   transliteration: string;
@@ -133,9 +134,33 @@ const CHARACTER_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
     ],
   },
 ];
-const CHARACTERS: CharacterTemplate[] = CHARACTER_GROUPS.flatMap(
-  ({ characters }) => characters,
-);
+const MATRA_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
+  {
+    title: 'Mātrā (क + vowel sign)',
+    characters: [
+      { letter: 'का', transliteration: 'kā' },
+      { letter: 'कि', transliteration: 'ki' },
+      { letter: 'की', transliteration: 'kī' },
+      { letter: 'कु', transliteration: 'ku' },
+      { letter: 'कू', transliteration: 'kū' },
+      { letter: 'कृ', transliteration: 'kṛ' },
+      { letter: 'कॄ', transliteration: 'kṝ' },
+      { letter: 'कॢ', transliteration: 'kḷ' },
+      { letter: 'कॣ', transliteration: 'kḹ' },
+      { letter: 'के', transliteration: 'ke' },
+      { letter: 'कै', transliteration: 'kai' },
+      { letter: 'को', transliteration: 'ko' },
+      { letter: 'कौ', transliteration: 'kau' },
+    ],
+  },
+];
+const CHARACTER_SOURCES: Record<
+  CharacterSource,
+  { title: string; groups: { title: string; characters: CharacterTemplate[] }[] }
+> = {
+  alphabet: { title: 'Alphabet', groups: CHARACTER_GROUPS },
+  matras: { title: 'Mātrā', groups: MATRA_GROUPS },
+};
 const PEN_THICKNESSES = [
   { label: 'Fine', width: 2 },
   { label: 'Medium', width: 4 },
@@ -206,6 +231,7 @@ export default function App() {
   const [penWidth, setPenWidth] = useState<number>(PEN_THICKNESSES[1].width);
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
+  const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
   const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
@@ -213,9 +239,15 @@ export default function App() {
   const gestureModeRef = useRef<
     'pending' | 'draw' | 'erase' | 'navigate' | 'navigated' | null
   >(null);
-  const guideFontSize = Math.min(canvasSize.width * 1.22, canvasSize.height * 0.76);
+  const isMatraGuide = characterSource === 'matras';
+  const guideFontSize = Math.min(
+    canvasSize.width * (isMatraGuide ? 0.68 : 1.22),
+    canvasSize.height * (isMatraGuide ? 0.7 : 0.76),
+  );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
-  const guideTransliteration = CHARACTERS.find(
+  const activeCharacterGroups = CHARACTER_SOURCES[characterSource].groups;
+  const activeCharacters = activeCharacterGroups.flatMap(({ characters }) => characters);
+  const guideTransliteration = activeCharacters.find(
     ({ letter }) => letter === guideCharacter,
   )?.transliteration;
 
@@ -336,14 +368,14 @@ export default function App() {
   };
 
   const changeGuideBySwipe = (direction: 1 | -1) => {
-    const currentIndex = CHARACTERS.findIndex(({ letter }) => letter === guideCharacter);
+    const currentIndex = activeCharacters.findIndex(({ letter }) => letter === guideCharacter);
     const nextIndex =
       currentIndex === -1
         ? direction === 1
           ? 0
-          : CHARACTERS.length - 1
-        : (currentIndex + direction + CHARACTERS.length) % CHARACTERS.length;
-    selectGuideCharacter(CHARACTERS[nextIndex].letter);
+          : activeCharacters.length - 1
+        : (currentIndex + direction + activeCharacters.length) % activeCharacters.length;
+    selectGuideCharacter(activeCharacters[nextIndex].letter);
   };
 
   const stopDrawing = () => {
@@ -520,7 +552,9 @@ export default function App() {
                 <View>
                   <Text style={styles.characterPickerTitle}>Choose a character</Text>
                   <Text style={styles.characterPickerSubtitle}>
-                    Select a template to practice
+                    {characterSource === 'alphabet'
+                      ? 'Choose an alphabet character to trace'
+                      : 'Choose a vowel sign attached to क'}
                   </Text>
                 </View>
                 <Pressable
@@ -535,11 +569,51 @@ export default function App() {
                   <Text style={styles.hideGuideText}>Close</Text>
                 </Pressable>
               </View>
+              <View
+                style={styles.characterSourceSelector}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Template source"
+              >
+                {(['alphabet', 'matras'] as const).map((source) => {
+                  const selected = characterSource === source;
+                  return (
+                    <Pressable
+                      key={source}
+                      accessibilityRole="radio"
+                      accessibilityLabel={CHARACTER_SOURCES[source].title}
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => {
+                        setCharacterSource(source);
+                        setGuideCharacter(null);
+                      }}
+                      style={({ pressed }) => [
+                        styles.characterSourceButton,
+                        selected && styles.selectedCharacterSourceButton,
+                        pressed && styles.vowelButtonPressed,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.characterSourceText,
+                          selected && styles.selectedCharacterSourceText,
+                        ]}
+                      >
+                        {CHARACTER_SOURCES[source].title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {characterSource === 'matras' && (
+                <Text style={styles.matraNote}>
+                  The inherent vowel अ has no separate Mātrā sign.
+                </Text>
+              )}
               <ScrollView
                 contentContainerStyle={styles.characterGroups}
-                accessibilityLabel="Sanskrit character templates"
+                accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} templates`}
               >
-                {CHARACTER_GROUPS.map(({ title, characters }) => (
+                {activeCharacterGroups.map(({ title, characters }) => (
                   <View key={title} style={styles.characterGroup}>
                     <Text style={styles.characterGroupTitle}>{title}</Text>
                     <View style={styles.characterGrid}>
@@ -660,8 +734,8 @@ export default function App() {
                 </View>
                 <Text style={styles.hintText}>
                   {tool === 'draw'
-                    ? 'One finger to draw · two fingers to change character'
-                    : 'One finger to erase · two fingers to change character'}
+                  ? 'One finger to draw · two fingers to change template'
+                  : 'One finger to erase · two fingers to change template'}
                 </Text>
               </View>
             )}
@@ -956,6 +1030,39 @@ const styles = StyleSheet.create({
     color: '#858B84',
     fontSize: 13,
     marginTop: 4,
+  },
+  characterSourceSelector: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 4,
+    borderRadius: 14,
+    flexDirection: 'row',
+    backgroundColor: '#E9ECE6',
+    gap: 4,
+  },
+  characterSourceButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCharacterSourceButton: {
+    backgroundColor: '#FFFEFC',
+  },
+  characterSourceText: {
+    color: '#7E877F',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  selectedCharacterSourceText: {
+    color: '#394A3F',
+  },
+  matraNote: {
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    color: '#858B84',
+    fontSize: 12,
   },
   characterGroups: {
     paddingHorizontal: 20,

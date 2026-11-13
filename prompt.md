@@ -86,3 +86,11 @@ TODO - web is not correct alignment is top left and generally out of whack
 ---
 
 add the sanskrit consonants to the list of available templates. This will add to the number of selectable options. consider rethinking the approach to selecting a character
+
+
+---
+
+Devanagri rules for writing consonant and a vowel are called Mātrā. Implement these as a new set of templated source that can be chosen to draw from - eg choose devanagri alphabet or Mātrā values 
+
+---
+Some of the templated Mātrā values do not fit into the canvas please fix
