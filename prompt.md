@@ -170,3 +170,14 @@ Implement the most common Saṃyuktākṣara conjuncts - use this list to speara
 
 ---
 For the grouped Items I now have to select twice to get the items to dsiplay on the canvas- feels a bit from a usability perspective. Selecting a list or lesson should feault the canvas to that list
+
+---
+
+Design & add an app icon for the app. Add it to the app
+
+--
+
+Add the icon to the screen
+
+--
+Make the background of the screen match the background of the icon. 

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
   type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -529,9 +530,13 @@ export default function App() {
         <StatusBar style="dark" />
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.brandMark}>
-              <View style={styles.brandLine} />
-            </View>
+            <Image
+              source={require('./assets/icon.png')}
+              style={styles.brandIcon}
+              resizeMode="cover"
+              accessible
+              accessibilityLabel="Akshara app icon"
+            />
             <Text style={styles.brand}>PAPER</Text>
           </View>
 
@@ -1002,7 +1007,7 @@ export default function App() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F4F4F0',
+    backgroundColor: '#F4EFE4',
   },
   content: {
     flex: 1,
@@ -1011,25 +1016,15 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   header: {
-    height: 36,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  brandMark: {
-    width: 30,
-    height: 30,
+  brandIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: '#DDE8DD',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandLine: {
-    width: 15,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: '#526D5D',
-    transform: [{ rotate: '-35deg' }],
   },
   brand: {
     color: '#526D5D',
