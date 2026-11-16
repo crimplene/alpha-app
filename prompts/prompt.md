@@ -234,3 +234,21 @@ Template is cropping - see top of this image
 When I open up the ink & pen controls, the template & the tracing do not move in the same way - see image as example 
 
 ![alt text](image-2.png)
+
+----
+
+Update the layout so that it supports screen rotation
+
+---
+
+The "choose a template" screen does not support landscape..please update
+
+still sideways ![alt text](image-3.png)
+
+landscape mode does not work at all fix for main screen an any menu dalogs
+
+
+Template picker correctly supports navigation on android. It does not work on ios when in landscape
+---
+
+Add unit tests to test the app - assume that tests need to be added and run after every build. Iexpect code coverage to be be between 60-80%. Demonstrate this value by reporting after building

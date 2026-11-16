@@ -9,6 +9,7 @@ import {
   Text,
   View,
   Image,
+  useWindowDimensions,
   type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -445,6 +446,8 @@ const splitStroke = (stroke: Stroke): Point[][] => {
 };
 
 export default function App() {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const strokesRef = useRef<Stroke[]>([]);
   const nextStrokeId = useRef(0);
@@ -456,6 +459,8 @@ export default function App() {
   const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
   const [selectedLesson, setSelectedLesson] = useState(0);
   const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
+  const [pickerSize, setPickerSize] = useState<CanvasSize>({ width: 0, height: 0 });
+  const isPickerLandscape = pickerSize.width > pickerSize.height;
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
   const gestureStartRef = useRef<Point | null>(null);
@@ -479,6 +484,148 @@ export default function App() {
     guideCharacter,
   );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
+
+  const lessonSelector = hasSelectableLessons ? (
+    <View
+      style={[
+        styles.lessonSection,
+        isPickerLandscape && styles.landscapeLessonSection,
+      ]}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} lessons`}
+    >
+      <Text style={styles.characterGroupTitle}>Choose a lesson</Text>
+      <View
+        style={[
+          styles.lessonGrid,
+          isPickerLandscape && styles.landscapeLessonGrid,
+        ]}
+      >
+        {activeLessonGroups.map((group, index) => {
+          const selected = selectedLesson === index;
+          return (
+            <Pressable
+              key={group.title}
+              accessibilityRole="radio"
+              accessibilityLabel={`Lesson ${index + 1}, ${group.title}`}
+              accessibilityState={{ checked: selected }}
+              onPress={() => {
+                setSelectedLesson(index);
+                setGuideCharacter(group.characters[0].letter);
+                clearCanvas();
+                setCharacterPickerVisible(false);
+              }}
+              style={({ pressed }) => [
+                styles.lessonOption,
+                isPickerLandscape && styles.landscapeLessonOption,
+                selected && styles.selectedLessonOption,
+                pressed && styles.vowelButtonPressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.lessonNumber,
+                  selected && styles.selectedLessonText,
+                ]}
+              >
+                LESSON {index + 1}
+              </Text>
+              <Text
+                style={[
+                  styles.lessonTitle,
+                  selected && styles.selectedLessonText,
+                ]}
+                numberOfLines={2}
+              >
+                {group.title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  ) : null;
+
+  const pickerNavigation = (
+    <>
+      <View
+        style={[
+          styles.characterSourceSelector,
+          isPickerLandscape && styles.landscapeCharacterSourceSelector,
+        ]}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Template source"
+      >
+        {(
+          ['alphabet', 'matras', 'virama', 'samyuktakshara', 'words'] as const
+        ).map((source) => {
+          const selected = characterSource === source;
+          return (
+            <Pressable
+              key={source}
+              accessibilityRole="radio"
+              accessibilityLabel={CHARACTER_SOURCES[source].title}
+              accessibilityState={{ checked: selected }}
+              onPress={() => {
+                setCharacterSource(source);
+                const firstCharacter = CHARACTER_SOURCES[source].groups[0].characters[0];
+                setGuideCharacter(firstCharacter.letter);
+                setSelectedLesson(0);
+                clearCanvas();
+                setCharacterPickerVisible(false);
+              }}
+              style={({ pressed }) => [
+                styles.characterSourceButton,
+                isPickerLandscape && styles.landscapeCharacterSourceButton,
+                selected && styles.selectedCharacterSourceButton,
+                pressed && styles.vowelButtonPressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.characterSourceText,
+                  selected && styles.selectedCharacterSourceText,
+                ]}
+              >
+                {CHARACTER_SOURCES[source].title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {characterSource === 'matras' && (
+        <Text
+          style={[
+            styles.matraNote,
+            isPickerLandscape && styles.landscapeMatraNote,
+          ]}
+        >
+          The inherent vowel अ has no separate Mātrā sign.
+        </Text>
+      )}
+      {characterSource === 'virama' && (
+        <Text
+          style={[
+            styles.matraNote,
+            isPickerLandscape && styles.landscapeMatraNote,
+          ]}
+        >
+          Virāma (्) removes the inherent vowel from each consonant.
+        </Text>
+      )}
+      {characterSource === 'samyuktakshara' && (
+        <Text
+          style={[
+            styles.matraNote,
+            isPickerLandscape && styles.landscapeMatraNote,
+          ]}
+        >
+          Each tile shows the conjunct, its components, and IAST transliteration.
+        </Text>
+      )}
+      {isPickerLandscape && lessonSelector}
+    </>
+  );
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -624,11 +771,18 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.screen}>
         <StatusBar style="dark" />
-        <View style={styles.content}>
-          <View style={styles.header}>
+        <View style={[styles.content, isLandscape && styles.landscapeContent]}>
+          <View style={[styles.mainLayout, isLandscape && styles.landscapeMainLayout]}>
+            <ScrollView
+              style={[styles.sidebar, isLandscape && styles.landscapeSidebar]}
+              contentContainerStyle={styles.sidebarContent}
+              scrollEnabled={isLandscape}
+              showsVerticalScrollIndicator={isLandscape}
+            >
+          <View style={[styles.header, isLandscape && styles.landscapeHeader]}>
             <Image
               source={require('./assets/icon.png')}
-              style={styles.brandIcon}
+              style={[styles.brandIcon, isLandscape && styles.landscapeBrandIcon]}
               resizeMode="cover"
               accessible
               accessibilityLabel="Akshara app icon"
@@ -636,9 +790,13 @@ export default function App() {
             <Text style={styles.brand}>PAPER</Text>
           </View>
 
-          <View style={styles.heading}>
-            <Text style={styles.title}>A little line drawing</Text>
-            <Text style={styles.subtitle}>Just you, a line, and a blank page.</Text>
+          <View style={[styles.heading, isLandscape && styles.landscapeHeading]}>
+            <Text style={[styles.title, isLandscape && styles.landscapeTitle]}>
+              A little line drawing
+            </Text>
+            <Text style={[styles.subtitle, isLandscape && styles.landscapeSubtitle]}>
+              Just you, a line, and a blank page.
+            </Text>
           </View>
 
           <View style={styles.drawingControlsPanel}>
@@ -653,7 +811,14 @@ export default function App() {
                 pressed && styles.colorOptionPressed,
               ]}
             >
-              <Text style={styles.drawingControlsTitle}>Ink & pen</Text>
+              <Text
+                style={[
+                  styles.drawingControlsTitle,
+                  isLandscape && styles.landscapeControlTitle,
+                ]}
+              >
+                Ink & pen
+              </Text>
               <View style={styles.drawingControlsSummary}>
                 <View style={[styles.summarySwatch, { backgroundColor: inkColor }]} />
                 <Text style={styles.summaryText}>
@@ -663,10 +828,32 @@ export default function App() {
               </View>
             </Pressable>
             {showDrawingControls && (
-              <View style={styles.drawingControlsContent}>
-                <View style={styles.colorPicker}>
-                  <Text style={styles.colorLabel}>Ink</Text>
-                  <View style={styles.colorOptions}>
+              <View
+                style={[
+                  styles.drawingControlsContent,
+                  isLandscape && styles.landscapeDrawingControlsContent,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.colorPicker,
+                    isLandscape && styles.landscapeColorPicker,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.colorLabel,
+                      isLandscape && styles.landscapeControlTitle,
+                    ]}
+                  >
+                    Ink
+                  </Text>
+                  <View
+                    style={[
+                      styles.colorOptions,
+                      isLandscape && styles.landscapeColorOptions,
+                    ]}
+                  >
                     {INK_COLORS.map((color) => {
                       const selected = inkColor === color.value;
                       return (
@@ -678,11 +865,18 @@ export default function App() {
                           onPress={() => setInkColor(color.value)}
                           style={({ pressed }) => [
                             styles.colorOption,
+                            isLandscape && styles.landscapeColorOption,
                             selected && styles.selectedColorOption,
                             pressed && styles.colorOptionPressed,
                           ]}
                         >
-                          <View style={[styles.colorSwatch, { backgroundColor: color.value }]} />
+                          <View
+                            style={[
+                              styles.colorSwatch,
+                              isLandscape && styles.landscapeColorSwatch,
+                              { backgroundColor: color.value },
+                            ]}
+                          />
                         </Pressable>
                       );
                     })}
@@ -690,7 +884,14 @@ export default function App() {
                 </View>
 
                 <View style={styles.thicknessPicker}>
-                  <Text style={styles.colorLabel}>Pen</Text>
+                  <Text
+                    style={[
+                      styles.colorLabel,
+                      isLandscape && styles.landscapeControlTitle,
+                    ]}
+                  >
+                    Pen
+                  </Text>
                   <View style={styles.thicknessSliderArea}>
                     <Slider
                       accessibilityRole="adjustable"
@@ -733,11 +934,23 @@ export default function App() {
             )}
           </View>
 
-          <View style={styles.guideToolbar}>
+          <View style={[styles.guideToolbar, isLandscape && styles.landscapeGuideToolbar]}>
             <View style={styles.guideHeader}>
               <View>
-              <Text style={styles.guideTitle}>Sanskrit templates</Text>
-                <Text style={styles.guideSubtitle}>
+              <Text
+                style={[
+                  styles.guideTitle,
+                  isLandscape && styles.landscapeGuideTitle,
+                ]}
+              >
+                Sanskrit templates
+              </Text>
+                <Text
+                  style={[
+                    styles.guideSubtitle,
+                    isLandscape && styles.landscapeGuideSubtitle,
+                  ]}
+                >
                   {guideCharacter === null
                   ? 'Choose a template to trace'
                     : `Tracing ${guideCharacter}`}
@@ -751,27 +964,67 @@ export default function App() {
                   onPress={() => setCharacterPickerVisible(true)}
                   style={({ pressed }) => [
                     styles.chooseCharacterButton,
+                    isLandscape && styles.landscapeChooseCharacterButton,
                     pressed && styles.vowelButtonPressed,
                   ]}
                 >
-                  <Text style={styles.chooseCharacterText}>
+                  <Text
+                    style={[
+                      styles.chooseCharacterText,
+                      isLandscape && styles.landscapeChooseCharacterText,
+                    ]}
+                  >
                     {guideCharacter ?? 'Choose'}
                   </Text>
                 </Pressable>
               </View>
             </View>
           </View>
+            </ScrollView>
 
           <Modal
             animationType="slide"
             visible={isCharacterPickerVisible}
+            presentationStyle="fullScreen"
+            supportedOrientations={[
+              'portrait',
+              'portrait-upside-down',
+              'landscape',
+              'landscape-left',
+              'landscape-right',
+            ]}
             onRequestClose={() => setCharacterPickerVisible(false)}
           >
-            <SafeAreaView style={styles.characterPickerScreen}>
-              <View style={styles.characterPickerHeader}>
+            <SafeAreaView
+              style={styles.characterPickerScreen}
+              onLayout={({ nativeEvent }) =>
+                setPickerSize({
+                  width: nativeEvent.layout.width,
+                  height: nativeEvent.layout.height,
+                })
+              }
+            >
+              <View
+                style={[
+                  styles.characterPickerHeader,
+                  isPickerLandscape && styles.landscapeCharacterPickerHeader,
+                ]}
+              >
                 <View>
-                  <Text style={styles.characterPickerTitle}>Choose a template</Text>
-                  <Text style={styles.characterPickerSubtitle}>
+                  <Text
+                    style={[
+                      styles.characterPickerTitle,
+                      isPickerLandscape && styles.landscapeCharacterPickerTitle,
+                    ]}
+                  >
+                    Choose a template
+                  </Text>
+                  <Text
+                    style={[
+                      styles.characterPickerSubtitle,
+                      isPickerLandscape && styles.landscapeCharacterPickerSubtitle,
+                    ]}
+                  >
                     {characterSource === 'alphabet'
                       ? 'Choose an alphabet character to trace'
                       : characterSource === 'matras'
@@ -789,174 +1042,117 @@ export default function App() {
                   onPress={() => setCharacterPickerVisible(false)}
                   style={({ pressed }) => [
                     styles.hideGuideButton,
+                    isPickerLandscape && styles.landscapePickerCloseButton,
                     pressed && styles.vowelButtonPressed,
                   ]}
                 >
-                  <Text style={styles.hideGuideText}>Close</Text>
+                  <Text
+                    style={[
+                      styles.hideGuideText,
+                      isPickerLandscape && styles.landscapePickerCloseText,
+                    ]}
+                  >
+                    Close
+                  </Text>
                 </Pressable>
               </View>
               <View
-                style={styles.characterSourceSelector}
-                accessibilityRole="radiogroup"
-                accessibilityLabel="Template source"
+                style={[
+                  styles.characterPickerBody,
+                  isPickerLandscape && styles.landscapeCharacterPickerBody,
+                ]}
               >
-                {(
-                  ['alphabet', 'matras', 'virama', 'samyuktakshara', 'words'] as const
-                ).map((source) => {
-                  const selected = characterSource === source;
-                  return (
-                    <Pressable
-                      key={source}
-                      accessibilityRole="radio"
-                      accessibilityLabel={CHARACTER_SOURCES[source].title}
-                      accessibilityState={{ checked: selected }}
-                      onPress={() => {
-                        setCharacterSource(source);
-                        const firstCharacter = CHARACTER_SOURCES[source].groups[0].characters[0];
-                        setGuideCharacter(firstCharacter.letter);
-                        setSelectedLesson(0);
-                        clearCanvas();
-                        setCharacterPickerVisible(false);
-                      }}
-                      style={({ pressed }) => [
-                        styles.characterSourceButton,
-                        selected && styles.selectedCharacterSourceButton,
-                        pressed && styles.vowelButtonPressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.characterSourceText,
-                          selected && styles.selectedCharacterSourceText,
-                        ]}
-                      >
-                        {CHARACTER_SOURCES[source].title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {characterSource === 'matras' && (
-                <Text style={styles.matraNote}>
-                  The inherent vowel अ has no separate Mātrā sign.
-                </Text>
-              )}
-              {characterSource === 'virama' && (
-                <Text style={styles.matraNote}>
-                  Virāma (्) removes the inherent vowel from each consonant.
-                </Text>
-              )}
-              {characterSource === 'samyuktakshara' && (
-                <Text style={styles.matraNote}>
-                  Each tile shows the conjunct, its components, and IAST transliteration.
-                </Text>
-              )}
-              <ScrollView
-                contentContainerStyle={styles.characterGroups}
-                accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} templates`}
-              >
-                {hasSelectableLessons && (
-                  <View
-                    style={styles.lessonSection}
-                    accessibilityRole="radiogroup"
-                    accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} lessons`}
+                {isPickerLandscape ? (
+                  <ScrollView
+                    style={styles.landscapeCharacterPickerSidebar}
+                    contentContainerStyle={styles.landscapeCharacterPickerSidebarContent}
                   >
-                    <Text style={styles.characterGroupTitle}>Choose a lesson</Text>
-                    <View style={styles.lessonGrid}>
-                      {activeLessonGroups.map((group, index) => {
-                        const selected = selectedLesson === index;
-                        return (
-                          <Pressable
-                            key={group.title}
-                            accessibilityRole="radio"
-                            accessibilityLabel={`Lesson ${index + 1}, ${group.title}`}
-                            accessibilityState={{ checked: selected }}
-                            onPress={() => {
-                              setSelectedLesson(index);
-                              setGuideCharacter(group.characters[0].letter);
-                              clearCanvas();
-                              setCharacterPickerVisible(false);
-                            }}
-                            style={({ pressed }) => [
-                              styles.lessonOption,
-                              selected && styles.selectedLessonOption,
-                              pressed && styles.vowelButtonPressed,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.lessonNumber,
-                                selected && styles.selectedLessonText,
-                              ]}
-                            >
-                              LESSON {index + 1}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.lessonTitle,
-                                selected && styles.selectedLessonText,
-                              ]}
-                              numberOfLines={2}
-                            >
-                              {group.title}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
+                    {pickerNavigation}
+                  </ScrollView>
+                ) : (
+                  <View style={styles.characterPickerNavigation}>
+                    {pickerNavigation}
                   </View>
                 )}
-                {activeCharacterGroups.map(({ title, characters }) => (
-                  <View key={title} style={styles.characterGroup}>
-                    <Text style={styles.characterGroupTitle}>{title}</Text>
-                    <View style={styles.characterGrid}>
-                      {characters.map(({ letter, transliteration, components }) => {
-                        const selected = guideCharacter === letter;
-                        return (
-                          <Pressable
-                            key={letter}
-                            accessibilityRole="radio"
-                            accessibilityLabel={`${transliteration}, ${letter}${components ? `, components ${components}` : ''}`}
-                            accessibilityState={{ checked: selected }}
-                            onPress={() => selectGuideCharacter(letter)}
-                            style={({ pressed }) => [
-                              styles.characterOption,
-                              characterSource === 'samyuktakshara' &&
-                                styles.conjunctCharacterOption,
-                              characterSource === 'words' && styles.wordCharacterOption,
-                              selected && styles.selectedCharacterOption,
-                              pressed && styles.vowelButtonPressed,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.characterOptionLetter,
+                <ScrollView
+                  style={styles.characterPickerTemplates}
+                  contentContainerStyle={[
+                    styles.characterGroups,
+                    isPickerLandscape && styles.landscapeCharacterGroups,
+                  ]}
+                  accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} templates`}
+                >
+                  {!isPickerLandscape && lessonSelector}
+                  {activeCharacterGroups.map(({ title, characters }) => (
+                    <View
+                      key={title}
+                      style={[
+                        styles.characterGroup,
+                        isPickerLandscape && styles.landscapeCharacterGroup,
+                      ]}
+                    >
+                      <Text style={styles.characterGroupTitle}>{title}</Text>
+                      <View
+                        style={[
+                          styles.characterGrid,
+                          isPickerLandscape && styles.landscapeCharacterGrid,
+                        ]}
+                      >
+                        {characters.map(({ letter, transliteration, components }) => {
+                          const selected = guideCharacter === letter;
+                          return (
+                            <Pressable
+                              key={letter}
+                              accessibilityRole="radio"
+                              accessibilityLabel={`${transliteration}, ${letter}${components ? `, components ${components}` : ''}`}
+                              accessibilityState={{ checked: selected }}
+                              onPress={() => selectGuideCharacter(letter)}
+                              style={({ pressed }) => [
+                                styles.characterOption,
+                                isPickerLandscape && styles.landscapeCharacterOption,
+                                characterSource === 'samyuktakshara' &&
+                                  (isPickerLandscape
+                                    ? styles.landscapeConjunctCharacterOption
+                                    : styles.conjunctCharacterOption),
                                 characterSource === 'words' &&
-                                  styles.wordCharacterOptionLetter,
+                                  (isPickerLandscape
+                                    ? styles.landscapeWordCharacterOption
+                                    : styles.wordCharacterOption),
+                                selected && styles.selectedCharacterOption,
+                                pressed && styles.vowelButtonPressed,
                               ]}
                             >
-                              {letter}
-                            </Text>
-                            <Text style={styles.characterOptionTransliteration}>
-                              {transliteration}
-                            </Text>
-                            {components && (
-                              <Text style={styles.characterOptionComponents}>
-                                {components}
+                              <Text
+                                style={[
+                                  styles.characterOptionLetter,
+                                  characterSource === 'words' &&
+                                    styles.wordCharacterOptionLetter,
+                                ]}
+                              >
+                                {letter}
                               </Text>
-                            )}
-                          </Pressable>
-                        );
-                      })}
+                              <Text style={styles.characterOptionTransliteration}>
+                                {transliteration}
+                              </Text>
+                              {components && (
+                                <Text style={styles.characterOptionComponents}>
+                                  {components}
+                                </Text>
+                              )}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </ScrollView>
+              </View>
             </SafeAreaView>
           </Modal>
 
+          <View style={styles.workspace}>
           <View
-            style={styles.canvas}
+            style={[styles.canvas, isLandscape && styles.landscapeCanvas]}
             onLayout={({ nativeEvent }) => {
               const nextSize = {
                 width: nativeEvent.layout.width,
@@ -1074,7 +1270,7 @@ export default function App() {
             )}
           </View>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, isLandscape && styles.landscapeFooter]}>
             <View style={styles.toolSelector} accessibilityRole="tablist">
               <Pressable
                 accessibilityRole="tab"
@@ -1117,6 +1313,8 @@ export default function App() {
               <Text style={[styles.clearText, strokes.length === 0 && styles.disabledText]}>Clear</Text>
             </Pressable>
           </View>
+          </View>
+          </View>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -1134,16 +1332,56 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
+  landscapeContent: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  mainLayout: {
+    flex: 1,
+  },
+  landscapeMainLayout: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sidebar: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  sidebarContent: {
+    flexGrow: 0,
+  },
+  landscapeSidebar: {
+    width: '34%',
+    maxWidth: 320,
+  },
+  workspace: {
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  landscapeCanvas: {
+    minHeight: 0,
+    borderRadius: 18,
+  },
   header: {
     height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
+  landscapeHeader: {
+    height: 30,
+  },
   brandIcon: {
     width: 40,
     height: 40,
     borderRadius: 10,
+  },
+  landscapeBrandIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
   },
   brand: {
     color: '#526D5D',
@@ -1155,6 +1393,10 @@ const styles = StyleSheet.create({
     marginTop: 30,
     marginBottom: 12,
   },
+  landscapeHeading: {
+    marginTop: 10,
+    marginBottom: 8,
+  },
   title: {
     color: '#26312B',
     fontSize: 27,
@@ -1162,10 +1404,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.8,
   },
+  landscapeTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
   subtitle: {
     color: '#858B84',
     fontSize: 14,
     marginTop: 6,
+  },
+  landscapeSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  landscapeControlTitle: {
+    fontSize: 11,
   },
   colorPicker: {
     minHeight: 40,
@@ -1184,6 +1437,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  landscapeColorOptions: {
+    gap: 2,
+  },
   colorOption: {
     width: 36,
     height: 36,
@@ -1192,6 +1448,10 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  landscapeColorOption: {
+    width: 30,
+    height: 30,
   },
   selectedColorOption: {
     borderColor: '#B9C6B9',
@@ -1203,6 +1463,11 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
+  },
+  landscapeColorSwatch: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
   drawingControlsPanel: {
     marginBottom: 8,
@@ -1249,6 +1514,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 6,
   },
+  landscapeDrawingControlsContent: {
+    paddingHorizontal: 8,
+    paddingBottom: 2,
+  },
+  landscapeColorPicker: {
+    minHeight: 34,
+    marginBottom: 4,
+    gap: 8,
+  },
   thicknessPicker: {
     minHeight: 48,
     marginBottom: 4,
@@ -1282,6 +1556,10 @@ const styles = StyleSheet.create({
     minHeight: 48,
     marginBottom: 10,
   },
+  landscapeGuideToolbar: {
+    minHeight: 40,
+    marginBottom: 0,
+  },
   guideHeader: {
     minHeight: 48,
     flexDirection: 'row',
@@ -1293,10 +1571,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  landscapeGuideTitle: {
+    fontSize: 11,
+  },
   guideSubtitle: {
     color: '#929790',
     fontSize: 11,
     marginTop: 3,
+  },
+  landscapeGuideSubtitle: {
+    fontSize: 10,
+    marginTop: 1,
   },
   guideActions: {
     flexDirection: 'row',
@@ -1323,10 +1608,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  landscapeChooseCharacterButton: {
+    minWidth: 42,
+    height: 38,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
   chooseCharacterText: {
     color: '#394A3F',
     fontSize: 21,
     fontWeight: '600',
+  },
+  landscapeChooseCharacterText: {
+    fontSize: 17,
   },
   vowelButtonPressed: {
     opacity: 0.7,
@@ -1334,6 +1628,30 @@ const styles = StyleSheet.create({
   characterPickerScreen: {
     flex: 1,
     backgroundColor: '#F4F4F0',
+  },
+  characterPickerBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  landscapeCharacterPickerBody: {
+    flexDirection: 'row',
+  },
+  characterPickerNavigation: {
+    flexShrink: 0,
+  },
+  landscapeCharacterPickerSidebar: {
+    width: '34%',
+    minWidth: 220,
+    maxWidth: 320,
+    borderRightWidth: 1,
+    borderRightColor: '#E4E6DF',
+  },
+  landscapeCharacterPickerSidebarContent: {
+    paddingBottom: 16,
+  },
+  characterPickerTemplates: {
+    flex: 1,
+    minHeight: 0,
   },
   characterPickerHeader: {
     minHeight: 76,
@@ -1344,15 +1662,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E4E6DF',
   },
+  landscapeCharacterPickerHeader: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+  },
   characterPickerTitle: {
     color: '#26312B',
     fontSize: 20,
     fontWeight: '600',
   },
+  landscapeCharacterPickerTitle: {
+    fontSize: 17,
+  },
   characterPickerSubtitle: {
     color: '#858B84',
     fontSize: 13,
     marginTop: 4,
+  },
+  landscapeCharacterPickerSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  landscapePickerCloseButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  landscapePickerCloseText: {
+    fontSize: 11,
   },
   characterSourceSelector: {
     marginHorizontal: 20,
@@ -1364,6 +1700,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E9ECE6',
     gap: 4,
   },
+  landscapeCharacterSourceSelector: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    padding: 3,
+    gap: 3,
+  },
   characterSourceButton: {
     flexBasis: '48%',
     flexGrow: 1,
@@ -1371,6 +1713,10 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  landscapeCharacterSourceButton: {
+    minHeight: 34,
+    borderRadius: 8,
   },
   selectedCharacterSourceButton: {
     backgroundColor: '#FFFEFC',
@@ -1389,20 +1735,41 @@ const styles = StyleSheet.create({
     color: '#858B84',
     fontSize: 12,
   },
+  landscapeMatraNote: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    fontSize: 11,
+  },
   characterGroups: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 28,
     gap: 20,
   },
+  landscapeCharacterGroups: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
+    gap: 12,
+  },
   lessonSection: {
     gap: 10,
+  },
+  landscapeLessonSection: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    gap: 6,
   },
   lessonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: 8,
+  },
+  landscapeLessonGrid: {
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    rowGap: 6,
   },
   lessonOption: {
     width: '48.5%',
@@ -1415,6 +1782,14 @@ const styles = StyleSheet.create({
     borderColor: '#E8E8E2',
     justifyContent: 'center',
     gap: 4,
+  },
+  landscapeLessonOption: {
+    width: '100%',
+    minHeight: 54,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 2,
   },
   selectedLessonOption: {
     backgroundColor: '#DDE8DD',
@@ -1437,6 +1812,9 @@ const styles = StyleSheet.create({
   characterGroup: {
     gap: 10,
   },
+  landscapeCharacterGroup: {
+    gap: 8,
+  },
   characterGroupTitle: {
     color: '#53655A',
     fontSize: 14,
@@ -1448,6 +1826,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     rowGap: 8,
   },
+  landscapeCharacterGrid: {
+    rowGap: 6,
+  },
   characterOption: {
     width: '18%',
     minHeight: 68,
@@ -1458,6 +1839,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E8E8E2',
+  },
+  landscapeCharacterOption: {
+    minHeight: 58,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  landscapeConjunctCharacterOption: {
+    minHeight: 70,
+  },
+  landscapeWordCharacterOption: {
+    minHeight: 70,
   },
   conjunctCharacterOption: {
     width: '31%',
@@ -1547,6 +1939,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  landscapeFooter: {
+    minHeight: 54,
+    paddingTop: 6,
   },
   toolSelector: {
     flexDirection: 'row',
