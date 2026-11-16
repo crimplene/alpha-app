@@ -189,3 +189,43 @@ Remove the hide button
 ---
 
 Make the english lettering on the canvas bolder
+
+----
+
+I'd like to add another group - this time simple words to write - group of 20. These should be groups and selectable and presented as a template on a canvas. For each word presented below please check diactritics
+
+ahiṃsā
+aṣṭāṅga
+avidyā
+bhakti
+devanāgarī
+dhana
+karma
+mantra
+mudrā
+niyama
+prakṛti
+prāṇāyāma
+pratyāhāra
+puruṣa
+saṃskāra
+saṅgha
+sūtra
+yama
+yoga
+yogī
+
+----
+The templates on the canvas are too small to draw on a portrait mobile scree. maximise the size of the tremplate to use all available space
+
+check the devanagri for bhakti & correct if needed I get भक्ति
+
+Note how it is presented on android - not as you suggested ![alt text](image.png)
+
+I like the change from dotted to filled line, keep this 
+
+---
+
+Template is cropping - see top of this image 
+![alt text](image-1.png) 
+

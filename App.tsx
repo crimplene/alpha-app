@@ -12,7 +12,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 type Point = {
   x: number;
@@ -32,7 +32,7 @@ type Stroke = {
 };
 
 type Tool = 'draw' | 'erase';
-type CharacterSource = 'alphabet' | 'matras' | 'virama' | 'samyuktakshara';
+type CharacterSource = 'alphabet' | 'matras' | 'virama' | 'samyuktakshara' | 'words';
 type CharacterTemplate = {
   letter: string;
   transliteration: string;
@@ -277,6 +277,48 @@ const SAMYUKTAKSHARA_GROUPS: {
     ],
   },
 ];
+const WORD_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
+  {
+    title: 'Words 1–5',
+    characters: [
+      { letter: 'अहिंसा', transliteration: 'ahiṃsā' },
+      { letter: 'अष्टाङ्ग', transliteration: 'aṣṭāṅga' },
+      { letter: 'अविद्या', transliteration: 'avidyā' },
+      { letter: 'भक्ति', transliteration: 'bhakti' },
+      { letter: 'देवनागरी', transliteration: 'devanāgarī' },
+    ],
+  },
+  {
+    title: 'Words 6–10',
+    characters: [
+      { letter: 'धन', transliteration: 'dhana' },
+      { letter: 'कर्म', transliteration: 'karma' },
+      { letter: 'मन्त्र', transliteration: 'mantra' },
+      { letter: 'मुद्रा', transliteration: 'mudrā' },
+      { letter: 'नियम', transliteration: 'niyama' },
+    ],
+  },
+  {
+    title: 'Words 11–15',
+    characters: [
+      { letter: 'प्रकृति', transliteration: 'prakṛti' },
+      { letter: 'प्राणायाम', transliteration: 'prāṇāyāma' },
+      { letter: 'प्रत्याहार', transliteration: 'pratyāhāra' },
+      { letter: 'पुरुष', transliteration: 'puruṣa' },
+      { letter: 'संस्कार', transliteration: 'saṃskāra' },
+    ],
+  },
+  {
+    title: 'Words 16–20',
+    characters: [
+      { letter: 'सङ्घ', transliteration: 'saṅgha' },
+      { letter: 'सूत्र', transliteration: 'sūtra' },
+      { letter: 'यम', transliteration: 'yama' },
+      { letter: 'योग', transliteration: 'yoga' },
+      { letter: 'योगी', transliteration: 'yogī' },
+    ],
+  },
+];
 const CHARACTER_SOURCES: Record<
   CharacterSource,
   { title: string; groups: { title: string; characters: CharacterTemplate[] }[] }
@@ -288,6 +330,7 @@ const CHARACTER_SOURCES: Record<
     title: 'Saṃyuktākṣara',
     groups: SAMYUKTAKSHARA_GROUPS,
   },
+  words: { title: 'Words', groups: WORD_GROUPS },
 };
 const PEN_THICKNESSES = [
   { label: 'Fine', width: 2 },
@@ -298,6 +341,37 @@ const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
 const VOWEL_SWIPE_DISTANCE = 72;
 const DRAW_GESTURE_DISTANCE = 6;
+
+const countDevanagariClusters = (text: string) => {
+  let count = 0;
+  let followsVirama = false;
+
+  for (const character of text) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    const isMark =
+      (codePoint >= 0x0900 && codePoint <= 0x0903) ||
+      (codePoint >= 0x093a && codePoint <= 0x094d) ||
+      (codePoint >= 0x0951 && codePoint <= 0x0957) ||
+      (codePoint >= 0x0962 && codePoint <= 0x0963);
+    if (isMark) {
+      followsVirama = codePoint === 0x094d;
+      continue;
+    }
+
+    const isConsonant =
+      (codePoint >= 0x0915 && codePoint <= 0x0939) ||
+      (codePoint >= 0x0958 && codePoint <= 0x095f);
+    if (isConsonant && followsVirama) {
+      followsVirama = false;
+      continue;
+    }
+
+    followsVirama = false;
+    count += 1;
+  }
+
+  return Math.max(count, 1);
+};
 
 const getTouchCenter = (event: GestureResponderEvent): Point | null => {
   const { touches } = event.nativeEvent;
@@ -360,7 +434,7 @@ export default function App() {
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
   const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
-  const [selectedConjunctLesson, setSelectedConjunctLesson] = useState(0);
+  const [selectedLesson, setSelectedLesson] = useState(0);
   const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 0, height: 0 });
   const lastTouchRef = useRef<Point | null>(null);
@@ -368,21 +442,31 @@ export default function App() {
   const gestureModeRef = useRef<
     'pending' | 'draw' | 'erase' | 'navigate' | 'navigated' | null
   >(null);
-  const isComplexGuide =
-    characterSource === 'matras' || characterSource === 'samyuktakshara';
-  const guideFontSize = Math.min(
-    canvasSize.width * (isComplexGuide ? 0.62 : 1.22),
-    canvasSize.height * (isComplexGuide ? 0.68 : 0.76),
-  );
-  const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
-  const activeCharacterGroups =
-    characterSource === 'samyuktakshara'
-      ? [SAMYUKTAKSHARA_GROUPS[selectedConjunctLesson]]
-      : CHARACTER_SOURCES[characterSource].groups;
+  const hasSelectableLessons =
+    characterSource === 'samyuktakshara' || characterSource === 'words';
+  const activeLessonGroups =
+    characterSource === 'samyuktakshara' ? SAMYUKTAKSHARA_GROUPS : WORD_GROUPS;
+  const activeCharacterGroups = hasSelectableLessons
+    ? [activeLessonGroups[selectedLesson]]
+    : CHARACTER_SOURCES[characterSource].groups;
   const activeCharacters = activeCharacterGroups.flatMap(({ characters }) => characters);
   const guideTransliteration = activeCharacters.find(
     ({ letter }) => letter === guideCharacter,
   )?.transliteration;
+  const isComplexGuide =
+    characterSource === 'matras' || characterSource === 'samyuktakshara';
+  const guideClusterCount = countDevanagariClusters(guideCharacter ?? '');
+  const guideFontSize =
+    characterSource === 'words' && guideCharacter !== null
+      ? Math.min(
+          (canvasSize.width * 0.9) / (guideClusterCount * 0.92),
+          canvasSize.height * 0.64,
+        )
+      : Math.min(
+          canvasSize.width * (isComplexGuide ? 0.62 : 1.22),
+          canvasSize.height * (isComplexGuide ? 0.68 : 0.76),
+        );
+  const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
 
   const startDrawing = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -640,10 +724,10 @@ export default function App() {
           <View style={styles.guideToolbar}>
             <View style={styles.guideHeader}>
               <View>
-                <Text style={styles.guideTitle}>Sanskrit characters</Text>
+              <Text style={styles.guideTitle}>Sanskrit templates</Text>
                 <Text style={styles.guideSubtitle}>
                   {guideCharacter === null
-                    ? 'Choose a character to trace'
+                  ? 'Choose a template to trace'
                     : `Tracing ${guideCharacter}`}
                 </Text>
               </View>
@@ -674,7 +758,7 @@ export default function App() {
             <SafeAreaView style={styles.characterPickerScreen}>
               <View style={styles.characterPickerHeader}>
                 <View>
-                  <Text style={styles.characterPickerTitle}>Choose a character</Text>
+                  <Text style={styles.characterPickerTitle}>Choose a template</Text>
                   <Text style={styles.characterPickerSubtitle}>
                     {characterSource === 'alphabet'
                       ? 'Choose an alphabet character to trace'
@@ -682,7 +766,9 @@ export default function App() {
                         ? 'Choose a vowel sign attached to क'
                         : characterSource === 'virama'
                           ? 'Choose a consonant without its inherent vowel'
-                          : 'Choose a conjunct to trace'}
+                          : characterSource === 'samyuktakshara'
+                            ? 'Choose a conjunct to trace'
+                            : 'Choose a Sanskrit word to trace'}
                   </Text>
                 </View>
                 <Pressable
@@ -702,7 +788,9 @@ export default function App() {
                 accessibilityRole="radiogroup"
                 accessibilityLabel="Template source"
               >
-                {(['alphabet', 'matras', 'virama', 'samyuktakshara'] as const).map((source) => {
+                {(
+                  ['alphabet', 'matras', 'virama', 'samyuktakshara', 'words'] as const
+                ).map((source) => {
                   const selected = characterSource === source;
                   return (
                     <Pressable
@@ -712,13 +800,11 @@ export default function App() {
                       accessibilityState={{ checked: selected }}
                       onPress={() => {
                         setCharacterSource(source);
-                        const firstCharacter =
-                          source === 'samyuktakshara'
-                            ? SAMYUKTAKSHARA_GROUPS[0].characters[0]
-                            : CHARACTER_SOURCES[source].groups[0].characters[0];
+                        const firstCharacter = CHARACTER_SOURCES[source].groups[0].characters[0];
                         setGuideCharacter(firstCharacter.letter);
-                        if (source === 'samyuktakshara') setSelectedConjunctLesson(0);
+                        setSelectedLesson(0);
                         clearCanvas();
+                        setCharacterPickerVisible(false);
                       }}
                       style={({ pressed }) => [
                         styles.characterSourceButton,
@@ -757,26 +843,27 @@ export default function App() {
                 contentContainerStyle={styles.characterGroups}
                 accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} templates`}
               >
-                {characterSource === 'samyuktakshara' && (
+                {hasSelectableLessons && (
                   <View
                     style={styles.lessonSection}
                     accessibilityRole="radiogroup"
-                    accessibilityLabel="Saṃyuktākṣara lessons"
+                    accessibilityLabel={`${CHARACTER_SOURCES[characterSource].title} lessons`}
                   >
                     <Text style={styles.characterGroupTitle}>Choose a lesson</Text>
                     <View style={styles.lessonGrid}>
-                      {SAMYUKTAKSHARA_GROUPS.map((group, index) => {
-                        const selected = selectedConjunctLesson === index;
+                      {activeLessonGroups.map((group, index) => {
+                        const selected = selectedLesson === index;
                         return (
                           <Pressable
                             key={group.title}
                             accessibilityRole="radio"
-                            accessibilityLabel={`Lesson ${index + 1}: ${group.title}`}
+                            accessibilityLabel={`Lesson ${index + 1}, ${group.title}`}
                             accessibilityState={{ checked: selected }}
                             onPress={() => {
-                              setSelectedConjunctLesson(index);
+                              setSelectedLesson(index);
                               setGuideCharacter(group.characters[0].letter);
                               clearCanvas();
+                              setCharacterPickerVisible(false);
                             }}
                             style={({ pressed }) => [
                               styles.lessonOption,
@@ -824,11 +911,20 @@ export default function App() {
                               styles.characterOption,
                               characterSource === 'samyuktakshara' &&
                                 styles.conjunctCharacterOption,
+                              characterSource === 'words' && styles.wordCharacterOption,
                               selected && styles.selectedCharacterOption,
                               pressed && styles.vowelButtonPressed,
                             ]}
                           >
-                            <Text style={styles.characterOptionLetter}>{letter}</Text>
+                            <Text
+                              style={[
+                                styles.characterOptionLetter,
+                                characterSource === 'words' &&
+                                  styles.wordCharacterOptionLetter,
+                              ]}
+                            >
+                              {letter}
+                            </Text>
                             <Text style={styles.characterOptionTransliteration}>
                               {transliteration}
                             </Text>
@@ -862,41 +958,27 @@ export default function App() {
             onResponderRelease={stopDrawing}
             onResponderTerminate={stopDrawing}
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
-            accessibilityHint="Use one finger to draw or erase. With a character selected, use two fingers to swipe to another character."
+            accessibilityHint="Use one finger to draw or erase. With a template selected, use two fingers to swipe to another template."
           >
             {guideCharacter !== null && guideFontSize > 0 && (
-              <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-                <SvgText
-                  x="50%"
-                  y="50%"
-                  fontSize={guideFontSize}
-                  fontFamily="sans-serif"
-                  fill="none"
-                  stroke="#718477"
-                  strokeWidth={1.6}
-                  strokeDasharray="8 8"
-                  opacity={0.5}
-                  textAnchor="middle"
-                  alignmentBaseline="central"
+              <View pointerEvents="none" style={styles.guideOverlay}>
+                <Text
+                  style={[
+                    styles.guideGlyph,
+                    {
+                      fontSize: guideFontSize,
+                      lineHeight: guideFontSize * 1.4,
+                    },
+                  ]}
                 >
                   {guideCharacter}
-                </SvgText>
+                </Text>
                 {guideTransliteration && (
-                  <SvgText
-                    x="94%"
-                    y="91%"
-                    fontSize={20}
-                    fontFamily="sans-serif"
-                    fontWeight="700"
-                    fill="#718477"
-                    opacity={0.9}
-                    textAnchor="end"
-                    alignmentBaseline="central"
-                  >
+                  <Text style={styles.guideTransliteration}>
                     {guideTransliteration}
-                  </SvgText>
+                  </Text>
                 )}
-              </Svg>
+              </View>
             )}
             <Svg style={StyleSheet.absoluteFill}>
               {strokes.flatMap((stroke) =>
@@ -1332,6 +1414,10 @@ const styles = StyleSheet.create({
     width: '31%',
     minHeight: 82,
   },
+  wordCharacterOption: {
+    width: '48.5%',
+    minHeight: 82,
+  },
   selectedCharacterOption: {
     backgroundColor: '#DDE8DD',
     borderColor: '#9EAF9F',
@@ -1340,6 +1426,9 @@ const styles = StyleSheet.create({
     color: '#39443E',
     fontSize: 24,
     lineHeight: 32,
+  },
+  wordCharacterOptionLetter: {
+    fontSize: 20,
   },
   characterOptionTransliteration: {
     color: '#858B84',
@@ -1358,6 +1447,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E8E2',
     overflow: 'hidden',
+  },
+  guideOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideGlyph: {
+    color: '#718477',
+    opacity: 0.38,
+    textAlign: 'center',
+    includeFontPadding: true,
+  },
+  guideTransliteration: {
+    position: 'absolute',
+    right: '6%',
+    bottom: '5%',
+    color: '#718477',
+    fontSize: 20,
+    fontWeight: '700',
+    opacity: 0.9,
   },
   canvasHint: {
     ...StyleSheet.absoluteFill,
