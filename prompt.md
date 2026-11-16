@@ -229,3 +229,8 @@ I like the change from dotted to filled line, keep this
 Template is cropping - see top of this image 
 ![alt text](image-1.png) 
 
+---
+
+When I open up the ink & pen controls, the template & the tracing do not move in the same way - see image as example 
+
+![alt text](image-2.png)

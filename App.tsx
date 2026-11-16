@@ -373,6 +373,26 @@ const countDevanagariClusters = (text: string) => {
   return Math.max(count, 1);
 };
 
+const getGuideFontSize = (
+  size: CanvasSize,
+  source: CharacterSource,
+  character: string | null,
+) => {
+  const isComplexGuide = source === 'matras' || source === 'samyuktakshara';
+  if (source === 'words' && character !== null) {
+    const clusterCount = countDevanagariClusters(character);
+    return Math.min(
+      (size.width * 0.9) / (clusterCount * 0.92),
+      size.height * 0.64,
+    );
+  }
+
+  return Math.min(
+    size.width * (isComplexGuide ? 0.62 : 1.22),
+    size.height * (isComplexGuide ? 0.68 : 0.76),
+  );
+};
+
 const getTouchCenter = (event: GestureResponderEvent): Point | null => {
   const { touches } = event.nativeEvent;
   if (touches.length < 2) return null;
@@ -453,19 +473,11 @@ export default function App() {
   const guideTransliteration = activeCharacters.find(
     ({ letter }) => letter === guideCharacter,
   )?.transliteration;
-  const isComplexGuide =
-    characterSource === 'matras' || characterSource === 'samyuktakshara';
-  const guideClusterCount = countDevanagariClusters(guideCharacter ?? '');
-  const guideFontSize =
-    characterSource === 'words' && guideCharacter !== null
-      ? Math.min(
-          (canvasSize.width * 0.9) / (guideClusterCount * 0.92),
-          canvasSize.height * 0.64,
-        )
-      : Math.min(
-          canvasSize.width * (isComplexGuide ? 0.62 : 1.22),
-          canvasSize.height * (isComplexGuide ? 0.68 : 0.76),
-        );
+  const guideFontSize = getGuideFontSize(
+    canvasSize,
+    characterSource,
+    guideCharacter,
+  );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
 
   const startDrawing = (event: GestureResponderEvent) => {
@@ -945,12 +957,49 @@ export default function App() {
 
           <View
             style={styles.canvas}
-            onLayout={({ nativeEvent }) =>
-              setCanvasSize({
+            onLayout={({ nativeEvent }) => {
+              const nextSize = {
                 width: nativeEvent.layout.width,
                 height: nativeEvent.layout.height,
-              })
-            }
+              };
+
+              if (
+                guideCharacter !== null &&
+                guideFontSize > 0 &&
+                canvasSize.width > 0 &&
+                canvasSize.height > 0 &&
+                (nextSize.width !== canvasSize.width ||
+                  nextSize.height !== canvasSize.height)
+              ) {
+                const nextGuideFontSize = getGuideFontSize(
+                  nextSize,
+                  characterSource,
+                  guideCharacter,
+                );
+                if (nextGuideFontSize > 0) {
+                  const scale = nextGuideFontSize / guideFontSize;
+                  const nextStrokes = strokesRef.current.map((stroke) => ({
+                    ...stroke,
+                    points: stroke.points.map((point) =>
+                      point
+                        ? {
+                            x:
+                              nextSize.width / 2 +
+                              (point.x - canvasSize.width / 2) * scale,
+                            y:
+                              nextSize.height / 2 +
+                              (point.y - canvasSize.height / 2) * scale,
+                          }
+                        : null,
+                    ),
+                  }));
+                  strokesRef.current = nextStrokes;
+                  setStrokes(nextStrokes);
+                }
+              }
+
+              setCanvasSize(nextSize);
+            }}
             onStartShouldSetResponder={() => true}
             onResponderGrant={startDrawing}
             onResponderStart={startTwoFingerNavigation}
