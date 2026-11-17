@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import * as mockReact from 'react';
 import type { PropsWithChildren } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import App from '../App';
+import App, { getNextQuizCharacter } from '../App';
 import { loadDrawingPreferences } from '../drawingPreferences';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -165,6 +165,45 @@ describe('template picker', () => {
         'landscape-left',
         'landscape-right',
       ],
+    });
+  });
+
+  describe('Devanāgarī quiz', () => {
+    it('chooses alphabet characters without immediately repeating the previous prompt', () => {
+      const first = getNextQuizCharacter(undefined, () => 0);
+      const next = getNextQuizCharacter(first.letter, () => 0);
+
+      expect(first).toMatchObject({ letter: 'अ', transliteration: 'a' });
+      expect(next.letter).not.toBe(first.letter);
+      expect(next.transliteration).toBeTruthy();
+    });
+
+    it('hides the answer until Show is pressed and clears the canvas for the next prompt', async () => {
+      const { getByLabelText, getAllByText, getByTestId, queryByText } = await render(<App />);
+      await fireEvent.press(getByLabelText('Quiz mode'));
+
+      const prompt = getByLabelText(/^Quiz prompt:/).props.accessibilityLabel as string;
+      expect(prompt).toMatch(/^Quiz prompt: /);
+      expect(getByTestId('quiz-prompt-layer')).toBeTruthy();
+      expect(StyleSheet.flatten(getByTestId('quiz-prompt').props.style).fontSize).toBe(42);
+      expect(queryByText(/[\u0900-\u097f]/)).toBeNull();
+
+      await fireEvent.press(getByLabelText('Show answer'));
+      expect(getByLabelText('Answer shown')).toBeTruthy();
+      expect(getAllByText(/[\u0900-\u097f]/).length).toBeGreaterThan(0);
+
+      const canvas = getByLabelText('Drawing canvas');
+      await fireEvent(canvas, 'responderGrant', {
+        nativeEvent: { locationX: 40, locationY: 50, touches: [] },
+      });
+      await fireEvent(canvas, 'responderRelease');
+      expect(getByLabelText('Clear drawing').props.accessibilityState.disabled).toBe(false);
+
+      await fireEvent.press(getByLabelText('Next quiz question'));
+      expect(queryByText('Choose a template to trace')).toBeNull();
+      expect(getByLabelText('Show answer')).toBeTruthy();
+      expect(getByLabelText('Clear drawing').props.accessibilityState.disabled).toBe(true);
+      expect(getByLabelText(/^Quiz prompt:/).props.accessibilityLabel).not.toBe(prompt);
     });
   });
 

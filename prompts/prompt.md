@@ -256,3 +256,13 @@ Add unit tests to test the app - assume that tests need to be added and run afte
 ---
 
 Configure the drawing tool options so that my choice of pen size and colour are maintained between sessions
+
+---
+
+Create a quiz mode where the english version of the devanagari is presented eg gha and the user has to draw the devanagari version. include a "show" button that will showe the expected devanagri. The quiz mode should draw from the devanagari alphabet
+
+---
+
+THe prompt is too small , missed it a few times - needs to be prominent. t could go as a layer in the canvas alongside the current text which is a bit redundant
+
+

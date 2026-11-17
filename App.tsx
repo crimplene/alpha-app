@@ -136,6 +136,16 @@ const CHARACTER_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
     ],
   },
 ];
+
+export const getNextQuizCharacter = (
+  currentLetter?: string,
+  random: () => number = Math.random,
+): CharacterTemplate => {
+  const alphabetCharacters = CHARACTER_GROUPS.flatMap(({ characters }) => characters);
+  const options = alphabetCharacters.filter(({ letter }) => letter !== currentLetter);
+  return options[Math.floor(random() * options.length)];
+};
+
 const MATRA_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
   {
     title: 'Mātrā (क + vowel sign)',
@@ -453,6 +463,9 @@ export default function App() {
   const preferencesChangedRef = useRef(false);
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
+  const [isQuizMode, setIsQuizMode] = useState(false);
+  const [quizCharacter, setQuizCharacter] = useState<CharacterTemplate | null>(null);
+  const [showQuizAnswer, setShowQuizAnswer] = useState(false);
   const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
   const [selectedLesson, setSelectedLesson] = useState(0);
   const [isCharacterPickerVisible, setCharacterPickerVisible] = useState(false);
@@ -475,10 +488,22 @@ export default function App() {
   const guideTransliteration = activeCharacters.find(
     ({ letter }) => letter === guideCharacter,
   )?.transliteration;
+  const displayedGuideCharacter = isQuizMode
+    ? showQuizAnswer
+      ? quizCharacter?.letter ?? null
+      : null
+    : guideCharacter;
+  const guideCanvasSize =
+    isQuizMode && showQuizAnswer
+      ? {
+          ...canvasSize,
+          height: Math.max(0, canvasSize.height - (isLandscape ? 80 : 120)),
+        }
+      : canvasSize;
   const guideFontSize = getGuideFontSize(
-    canvasSize,
-    characterSource,
-    guideCharacter,
+    guideCanvasSize,
+    isQuizMode ? 'alphabet' : characterSource,
+    displayedGuideCharacter,
   );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
 
@@ -692,7 +717,14 @@ export default function App() {
 
   const startTwoFingerNavigation = (event: GestureResponderEvent) => {
     const center = getTouchCenter(event);
-    if (!center || guideCharacter === null || gestureModeRef.current !== 'pending') return;
+    if (
+      isQuizMode ||
+      !center ||
+      guideCharacter === null ||
+      gestureModeRef.current !== 'pending'
+    ) {
+      return;
+    }
 
     gestureStartRef.current = center;
     lastTouchRef.current = null;
@@ -792,6 +824,25 @@ export default function App() {
     setStrokes([]);
   };
 
+  const startQuiz = () => {
+    setQuizCharacter(getNextQuizCharacter());
+    setShowQuizAnswer(false);
+    setIsQuizMode(true);
+    clearCanvas();
+  };
+
+  const nextQuizQuestion = () => {
+    setQuizCharacter((current) => getNextQuizCharacter(current?.letter));
+    setShowQuizAnswer(false);
+    clearCanvas();
+  };
+
+  const returnToPractice = () => {
+    setIsQuizMode(false);
+    setShowQuizAnswer(false);
+    clearCanvas();
+  };
+
   const selectGuideCharacter = (letter: string) => {
     clearCanvas();
     setGuideCharacter(letter);
@@ -852,6 +903,39 @@ export default function App() {
             <Text style={[styles.subtitle, isLandscape && styles.landscapeSubtitle]}>
               Just you, a line, and a blank page.
             </Text>
+          </View>
+
+          <View style={styles.modeSelector} accessibilityRole="tablist">
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityLabel="Practice mode"
+              accessibilityState={{ selected: !isQuizMode }}
+              onPress={returnToPractice}
+              style={({ pressed }) => [
+                styles.modeButton,
+                !isQuizMode && styles.activeModeButton,
+                pressed && styles.vowelButtonPressed,
+              ]}
+            >
+              <Text style={[styles.modeText, !isQuizMode && styles.activeModeText]}>
+                Practice
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityLabel="Quiz mode"
+              accessibilityState={{ selected: isQuizMode }}
+              onPress={startQuiz}
+              style={({ pressed }) => [
+                styles.modeButton,
+                isQuizMode && styles.activeModeButton,
+                pressed && styles.vowelButtonPressed,
+              ]}
+            >
+              <Text style={[styles.modeText, isQuizMode && styles.activeModeText]}>
+                Quiz
+              </Text>
+            </Pressable>
           </View>
 
           <View style={styles.drawingControlsPanel}>
@@ -997,46 +1081,80 @@ export default function App() {
           <View style={[styles.guideToolbar, isLandscape && styles.landscapeGuideToolbar]}>
             <View style={styles.guideHeader}>
               <View>
-              <Text
-                style={[
-                  styles.guideTitle,
-                  isLandscape && styles.landscapeGuideTitle,
-                ]}
-              >
-                Sanskrit templates
-              </Text>
                 <Text
                   style={[
-                    styles.guideSubtitle,
-                    isLandscape && styles.landscapeGuideSubtitle,
+                    styles.guideTitle,
+                    isLandscape && styles.landscapeGuideTitle,
                   ]}
                 >
-                  {guideCharacter === null
-                  ? 'Choose a template to trace'
-                    : `Tracing ${guideCharacter}`}
+                  {isQuizMode ? 'Devanāgarī quiz' : 'Sanskrit templates'}
                 </Text>
-              </View>
-              <View style={styles.guideActions}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Choose Sanskrit character template"
-                  accessibilityHint="Opens the character picker grouped by character type."
-                  onPress={() => setCharacterPickerVisible(true)}
-                  style={({ pressed }) => [
-                    styles.chooseCharacterButton,
-                    isLandscape && styles.landscapeChooseCharacterButton,
-                    pressed && styles.vowelButtonPressed,
-                  ]}
-                >
+                {!isQuizMode && (
                   <Text
                     style={[
-                      styles.chooseCharacterText,
-                      isLandscape && styles.landscapeChooseCharacterText,
+                      styles.guideSubtitle,
+                      isLandscape && styles.landscapeGuideSubtitle,
                     ]}
                   >
-                    {guideCharacter ?? 'Choose'}
+                    {guideCharacter === null
+                      ? 'Choose a template to trace'
+                      : `Tracing ${guideCharacter}`}
                   </Text>
-                </Pressable>
+                )}
+              </View>
+              <View style={styles.guideActions}>
+                {isQuizMode ? (
+                  <>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={showQuizAnswer ? 'Answer shown' : 'Show answer'}
+                      accessibilityState={{ disabled: showQuizAnswer }}
+                      disabled={showQuizAnswer}
+                      onPress={() => setShowQuizAnswer(true)}
+                      style={({ pressed }) => [
+                        styles.quizActionButton,
+                        showQuizAnswer && styles.quizActionButtonDisabled,
+                        pressed && !showQuizAnswer && styles.vowelButtonPressed,
+                      ]}
+                    >
+                      <Text style={styles.quizActionText}>
+                        {showQuizAnswer ? quizCharacter?.letter : 'Show'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Next quiz question"
+                      onPress={nextQuizQuestion}
+                      style={({ pressed }) => [
+                        styles.quizActionButton,
+                        pressed && styles.vowelButtonPressed,
+                      ]}
+                    >
+                      <Text style={styles.quizActionText}>Next</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Choose Sanskrit character template"
+                    accessibilityHint="Opens the character picker grouped by character type."
+                    onPress={() => setCharacterPickerVisible(true)}
+                    style={({ pressed }) => [
+                      styles.chooseCharacterButton,
+                      isLandscape && styles.landscapeChooseCharacterButton,
+                      pressed && styles.vowelButtonPressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chooseCharacterText,
+                        isLandscape && styles.landscapeChooseCharacterText,
+                      ]}
+                    >
+                      {guideCharacter ?? 'Choose'}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           </View>
@@ -1267,8 +1385,44 @@ export default function App() {
             accessibilityLabel={tool === 'draw' ? 'Drawing canvas' : 'Eraser canvas'}
             accessibilityHint="Use one finger to draw or erase. With a template selected, use two fingers to swipe to another template."
           >
-            {guideCharacter !== null && guideFontSize > 0 && (
-              <View pointerEvents="none" style={styles.guideOverlay}>
+            {isQuizMode && quizCharacter && (
+              <View
+                pointerEvents="none"
+                testID="quiz-prompt-layer"
+                style={[
+                  styles.quizPromptLayer,
+                  isLandscape && styles.landscapeQuizPromptLayer,
+                ]}
+              >
+                <Text
+                  accessibilityLabel={`Quiz prompt: ${quizCharacter.transliteration}`}
+                  testID="quiz-prompt"
+                  style={[
+                    styles.quizPrompt,
+                    isLandscape && styles.landscapeQuizPrompt,
+                  ]}
+                >
+                  {quizCharacter.transliteration}
+                </Text>
+                <Text
+                  style={[
+                    styles.quizPromptHint,
+                    isLandscape && styles.landscapeQuizPromptHint,
+                  ]}
+                >
+                  Write in Devanāgarī
+                </Text>
+              </View>
+            )}
+            {displayedGuideCharacter !== null && guideFontSize > 0 && (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.guideOverlay,
+                  isQuizMode && styles.quizGuideOverlay,
+                  isQuizMode && isLandscape && styles.landscapeQuizGuideOverlay,
+                ]}
+              >
                 <Text
                   style={[
                     styles.guideGlyph,
@@ -1278,9 +1432,9 @@ export default function App() {
                     },
                   ]}
                 >
-                  {guideCharacter}
+                  {displayedGuideCharacter}
                 </Text>
-                {guideTransliteration && (
+                {!isQuizMode && guideTransliteration && (
                   <Text style={styles.guideTransliteration}>
                     {guideTransliteration}
                   </Text>
@@ -1318,13 +1472,15 @@ export default function App() {
                 }),
               )}
             </Svg>
-            {strokes.length === 0 && guideCharacter === null && (
+            {strokes.length === 0 && displayedGuideCharacter === null && !isQuizMode && (
               <View pointerEvents="none" style={styles.canvasHint}>
                 <View style={styles.hintIcon}>
                   <View style={styles.hintLine} />
                 </View>
                 <Text style={styles.hintText}>
-                  {tool === 'draw'
+                  {isQuizMode
+                    ? 'Draw the Devanāgarī character for the prompt'
+                    : tool === 'draw'
                   ? 'One finger to draw · two fingers to change template'
                   : 'One finger to erase · two fingers to change template'}
                 </Text>
@@ -1458,6 +1614,34 @@ const styles = StyleSheet.create({
   landscapeHeading: {
     marginTop: 10,
     marginBottom: 8,
+  },
+  modeSelector: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    marginBottom: 12,
+    padding: 3,
+    borderRadius: 12,
+    backgroundColor: '#E9ECE6',
+    gap: 3,
+  },
+  modeButton: {
+    minWidth: 82,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeModeButton: {
+    backgroundColor: '#FFFEFC',
+  },
+  modeText: {
+    color: '#7E877F',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeModeText: {
+    color: '#394A3F',
   },
   title: {
     color: '#26312B',
@@ -1649,6 +1833,66 @@ const styles = StyleSheet.create({
   landscapeGuideSubtitle: {
     fontSize: 10,
     marginTop: 1,
+  },
+  quizActionButton: {
+    minWidth: 48,
+    minHeight: 38,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#DDE8DD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quizActionButtonDisabled: {
+    backgroundColor: '#ECEDE8',
+  },
+  quizActionText: {
+    color: '#394A3F',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  quizPromptLayer: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    zIndex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(244, 239, 228, 0.94)',
+  },
+  landscapeQuizPromptLayer: {
+    top: 8,
+    paddingVertical: 3,
+    borderRadius: 14,
+  },
+  quizGuideOverlay: {
+    top: 120,
+  },
+  landscapeQuizGuideOverlay: {
+    top: 80,
+  },
+  quizPrompt: {
+    color: '#26312B',
+    fontSize: 42,
+    lineHeight: 50,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  landscapeQuizPrompt: {
+    fontSize: 32,
+    lineHeight: 38,
+  },
+  quizPromptHint: {
+    color: '#53655A',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  landscapeQuizPromptHint: {
+    fontSize: 11,
+    marginTop: 0,
   },
   guideActions: {
     flexDirection: 'row',

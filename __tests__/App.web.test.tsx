@@ -35,6 +35,18 @@ jest.mock('react-native-svg', () => ({
 }));
 
 describe('web template picker', () => {
+  it('starts a quiz with a hidden Devanāgarī answer and reveals it on request', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Quiz mode' }));
+    expect(screen.getByLabelText(/^Quiz prompt:/)).toBeTruthy();
+    expect(screen.queryByText(/[\u0900-\u097f]/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show answer' }));
+    expect(screen.getByLabelText('Answer shown')).toBeTruthy();
+    expect(screen.getAllByText(/[\u0900-\u097f]/).length).toBeGreaterThan(0);
+  });
+
   it('restores drawing preferences in a browser session', async () => {
     await AsyncStorage.setItem(
       'drawing-preferences',
