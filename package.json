@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.2.1",
     "expo": "~58.0.24",
     "expo-status-bar": "~58.0.5",
@@ -14,9 +15,14 @@
     "react-native-web": "^0.21.4"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "30.0.0",
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.14",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -24,7 +30,49 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "jest --coverage --runInBand",
+    "eas-build-on-success": "npm test"
+  },
+  "jest": {
+    "projects": [
+      {
+        "displayName": "iOS",
+        "preset": "jest-expo/ios",
+        "testPathIgnorePatterns": [
+          "<rootDir>/__tests__/App.web.test.tsx"
+        ]
+      },
+      {
+        "displayName": "Android",
+        "preset": "jest-expo/android",
+        "testPathIgnorePatterns": [
+          "<rootDir>/__tests__/App.web.test.tsx"
+        ]
+      },
+      {
+        "displayName": "Web",
+        "preset": "jest-expo/web",
+        "testPathIgnorePatterns": [
+          "<rootDir>/__tests__/App.native.test.tsx"
+        ]
+      }
+    ],
+    "collectCoverageFrom": [
+      "App.tsx",
+      "drawingPreferences.ts"
+    ],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 60,
+        "statements": 60
+      }
+    }
   },
   "private": true
 }

@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import Slider from '@react-native-community/slider';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -14,6 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
+import {
+  INK_COLORS,
+  PEN_THICKNESSES,
+  loadDrawingPreferences,
+  saveDrawingPreferences,
+} from './drawingPreferences';
 
 type Point = {
   x: number;
@@ -40,13 +46,6 @@ type CharacterTemplate = {
   components?: string;
 };
 
-const INK_COLORS = [
-  { name: 'Charcoal', value: '#27312D' },
-  { name: 'Blue', value: '#4577A8' },
-  { name: 'Red', value: '#C45B4D' },
-  { name: 'Green', value: '#548267' },
-  { name: 'Gold', value: '#C18A35' },
-] as const;
 const CHARACTER_GROUPS: { title: string; characters: CharacterTemplate[] }[] = [
   {
     title: 'Vowels',
@@ -333,11 +332,6 @@ const CHARACTER_SOURCES: Record<
   },
   words: { title: 'Words', groups: WORD_GROUPS },
 };
-const PEN_THICKNESSES = [
-  { label: 'Fine', width: 2 },
-  { label: 'Medium', width: 4 },
-  { label: 'Bold', width: 7 },
-] as const;
 const DRAW_POINT_SPACING = 3;
 const ERASER_RADIUS = 12;
 const VOWEL_SWIPE_DISTANCE = 72;
@@ -454,6 +448,9 @@ export default function App() {
   const [tool, setTool] = useState<Tool>('draw');
   const [inkColor, setInkColor] = useState<string>(INK_COLORS[0].value);
   const [penWidth, setPenWidth] = useState<number>(PEN_THICKNESSES[1].width);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
+  const preferencesChangedRef = useRef(false);
   const [showDrawingControls, setShowDrawingControls] = useState(false);
   const [guideCharacter, setGuideCharacter] = useState<string | null>(null);
   const [characterSource, setCharacterSource] = useState<CharacterSource>('alphabet');
@@ -484,6 +481,64 @@ export default function App() {
     guideCharacter,
   );
   const selectedThicknessIndex = PEN_THICKNESSES.findIndex(({ width }) => width === penWidth);
+
+  useEffect(() => {
+    let active = true;
+
+    const restorePreferences = async () => {
+      try {
+        const preferences = await loadDrawingPreferences();
+        if (!active) return;
+
+        if (!preferencesChangedRef.current) {
+          if (preferences.inkColor) setInkColor(preferences.inkColor);
+          if (preferences.penWidth) setPenWidth(preferences.penWidth);
+        }
+      } catch (error) {
+        console.error('Unable to load drawing preferences.', error);
+        if (active) {
+          setPreferencesError('Drawing preferences could not be loaded.');
+        }
+      } finally {
+        if (active) setPreferencesReady(true);
+      }
+    };
+
+    void restorePreferences();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+
+    let active = true;
+    void saveDrawingPreferences({ inkColor, penWidth })
+      .then(() => {
+        if (active) setPreferencesError(null);
+      })
+      .catch((error: unknown) => {
+        console.error('Unable to save drawing preferences.', error);
+        if (active) {
+          setPreferencesError('Drawing preferences could not be saved.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [inkColor, penWidth, preferencesReady]);
+
+  const updateInkColor = (color: string) => {
+    preferencesChangedRef.current = true;
+    setInkColor(color);
+  };
+
+  const updatePenWidth = (width: number) => {
+    preferencesChangedRef.current = true;
+    setPenWidth(width);
+  };
 
   const lessonSelector = hasSelectableLessons ? (
     <View
@@ -862,7 +917,7 @@ export default function App() {
                           accessibilityRole="radio"
                           accessibilityLabel={`${color.name} ink`}
                           accessibilityState={{ checked: selected }}
-                          onPress={() => setInkColor(color.value)}
+                          onPress={() => updateInkColor(color.value)}
                           style={({ pressed }) => [
                             styles.colorOption,
                             isLandscape && styles.landscapeColorOption,
@@ -908,7 +963,7 @@ export default function App() {
                       step={1}
                       value={selectedThicknessIndex}
                       onValueChange={(value) =>
-                        setPenWidth(PEN_THICKNESSES[Math.round(value)].width)
+                        updatePenWidth(PEN_THICKNESSES[Math.round(value)].width)
                       }
                       minimumTrackTintColor="#758B79"
                       maximumTrackTintColor="#D8DDD5"
@@ -933,6 +988,11 @@ export default function App() {
               </View>
             )}
           </View>
+          {preferencesError && (
+            <Text accessibilityRole="alert" style={styles.preferencesError}>
+              {preferencesError}
+            </Text>
+          )}
 
           <View style={[styles.guideToolbar, isLandscape && styles.landscapeGuideToolbar]}>
             <View style={styles.guideHeader}>
@@ -985,6 +1045,7 @@ export default function App() {
           <Modal
             animationType="slide"
             visible={isCharacterPickerVisible}
+            testID="character-picker-modal"
             presentationStyle="fullScreen"
             supportedOrientations={[
               'portrait',
@@ -1057,6 +1118,7 @@ export default function App() {
                 </Pressable>
               </View>
               <View
+                testID="character-picker-body"
                 style={[
                   styles.characterPickerBody,
                   isPickerLandscape && styles.landscapeCharacterPickerBody,
@@ -1474,6 +1536,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#ECEDE8',
     overflow: 'hidden',
+  },
+  preferencesError: {
+    marginBottom: 8,
+    color: '#A33B32',
+    fontSize: 12,
   },
   drawingControlsHeader: {
     minHeight: 40,

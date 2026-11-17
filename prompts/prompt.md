@@ -251,4 +251,8 @@ landscape mode does not work at all fix for main screen an any menu dalogs
 Template picker correctly supports navigation on android. It does not work on ios when in landscape
 ---
 
-Add unit tests to test the app - assume that tests need to be added and run after every build. Iexpect code coverage to be be between 60-80%. Demonstrate this value by reporting after building
+Add unit tests to test the app - assume that tests need to be added and run after every build. I expect code coverage to be be between 60-80%. Demonstrate this value by reporting after building. Consider ios / android and web
+
+---
+
+Configure the drawing tool options so that my choice of pen size and colour are maintained between sessions
